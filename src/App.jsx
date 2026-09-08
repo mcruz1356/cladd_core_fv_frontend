@@ -149,17 +149,13 @@ function App() {
         element={<RechazosRegistro/>}/>
 
 
-      {/* RegistrarMuestra y StockCalidad: accesibles sin login (para desarrollo; volver a meter en RequireAuth en producción) */}
+      {/* RegistrarMuestra: accesible sin login */}
       <Route
         path="/BuenosAires/FlorencioVarela/Terminacion/RegistrarMuestra"
         element={<FormularioRegistrarMuestra />}
       />
-      <Route
-        path="/BuenosAires/FlorencioVarela/Terminacion/StockCalidad"
-        element={<StockCalidad withChrome />}
-      />
 
-      {/* LABORATORIO - rutas protegidas */}
+      {/* LABORATORIO / STOCK CALIDAD - rutas protegidas */}
       <Route
         element={
           <RequireAuth
@@ -170,6 +166,10 @@ function App() {
         <Route
           path="/BuenosAires/FlorencioVarela/Laboratorio"
           element={<FVLaboratorio />}
+        />
+        <Route
+          path="/BuenosAires/FlorencioVarela/Terminacion/StockCalidad"
+          element={<StockCalidad withChrome />}
         />
       </Route>
       <Route

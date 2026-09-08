@@ -1,8 +1,8 @@
 
 //Direccion de la API
-// const APIURL="http://192.168.40.95:4205/";   // Server
+const APIURL="http://192.168.40.95:4205/";   // Server
 // const APIURL="http://192.168.40.87:3006/";   // Notebook Mariano
-const APIURL="http://192.168.0.18:4205/";     // Notebook Mariano VPN
+// const APIURL="http://192.168.0.18:4205/";     // Notebook Mariano VPN (no disponible)
 
 const APIURL_Calidad ="http://192.168.40.95:4205/Calidad/Revisado/resumen"             //API Calidad Data
  

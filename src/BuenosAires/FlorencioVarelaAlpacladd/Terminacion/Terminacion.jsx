@@ -4,7 +4,6 @@ import { Box, Grid, Typography, Paper } from '@mui/material';
 import ScienceIcon from '@mui/icons-material/Science';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import QrCodeIcon from '@mui/icons-material/QrCode';
-import DescriptionIcon from '@mui/icons-material/Description';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import PrintIcon from '@mui/icons-material/Print';
 import BlockIcon from '@mui/icons-material/Block';
@@ -38,12 +37,6 @@ const MODULOS = [
     description: 'Generación de etiquetas de calidad.',
     icon: QrCodeIcon,
     route: '/BuenosAires/FlorencioVarela/Terminacion/Etiqueta',
-  },
-  {
-    title: 'Ficha técnica',
-    description: 'Consulta de artículos y detalles técnicos.',
-    icon: DescriptionIcon,
-    route: '/BuenosAires/FlorencioVarela/Terminacion/FichaTecnica',
   },
   {
     title: 'Reportes',
