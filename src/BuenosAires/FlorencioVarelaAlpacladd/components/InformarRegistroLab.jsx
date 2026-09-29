@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Box, Grid, TextField, Button, Snackbar, Alert, Typography } from '@mui/material';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Box, Grid, TextField, Button, Snackbar, Alert, Typography, Autocomplete } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CardAlpa from '../../../components/Plantilla/CardAlpa';
-import { putRegistroLaboratorio } from '../API/APIFunctions';
+import HeaderYFooter from '../../../components/Plantilla/HeaderYFooter';
+import { putRegistroLaboratorio, getOperarios } from '../API/APIFunctions';
 import { colors, typography } from '../../../styles/alpacladdFvDesignTokens';
 
 const primaryBtnSx = {
@@ -16,27 +17,27 @@ const primaryBtnSx = {
   '&:hover': { background: '#1A4862' },
 };
 
-const InformarRegistroLab = () => {
+const fieldSx = {
+  '& .MuiOutlinedInput-root': {
+    fontFamily: 'Poppins',
+    borderRadius: '10px',
+  },
+  '& .MuiInputLabel-root': {
+    fontFamily: 'Poppins',
+  },
+};
+
+const InformarRegistroLab = ({ withChrome = false }) => {
   const [codigo, setCodigo] = useState('');
+  const [operario, setOperario] = useState('');
+  const [operarios, setOperarios] = useState([]);
+  const [loadingOperarios, setLoadingOperarios] = useState(false);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('info');
-
-  useEffect(() => {
-    const focusInput = () => inputRef.current?.focus();
-    focusInput();
-
-    window.addEventListener('click', focusInput);
-    window.addEventListener('focus', focusInput);
-
-    return () => {
-      window.removeEventListener('click', focusInput);
-      window.removeEventListener('focus', focusInput);
-    };
-  }, []);
 
   const showSnackbar = (message, severity = 'info') => {
     setSnackbarMessage(message);
@@ -46,9 +47,54 @@ const InformarRegistroLab = () => {
 
   const handleSnackbarClose = () => setSnackbarOpen(false);
 
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const fetchOperarios = async () => {
+      setLoadingOperarios(true);
+      try {
+        const respuesta = await getOperarios();
+        const lista = Array.isArray(respuesta?.data) ? respuesta.data : [];
+        setOperarios(lista);
+        if (lista.length === 0) {
+          showSnackbar('No se encontraron operarios (role Operador).', 'warning');
+        }
+      } catch (error) {
+        console.error('Error al obtener operarios:', error);
+        setOperarios([]);
+        showSnackbar('Error al cargar operarios.', 'error');
+      } finally {
+        setLoadingOperarios(false);
+      }
+    };
+
+    fetchOperarios();
+  }, []);
+
+  const nombresOperarios = useMemo(
+    () => operarios.map((op) => op.usuario).filter(Boolean),
+    [operarios]
+  );
+
   const handleSearch = async () => {
     if (!codigo.trim()) {
       showSnackbar('Ingrese un codigo de muestra.', 'warning');
+      return;
+    }
+
+    const operarioTrim = (operario || '').trim();
+    if (!operarioTrim) {
+      showSnackbar('Ingresá o seleccioná el operario responsable.', 'warning');
+      return;
+    }
+
+    const operarioValido = nombresOperarios.find(
+      (nombre) => nombre.toLowerCase() === operarioTrim.toLowerCase()
+    );
+    if (!operarioValido) {
+      showSnackbar('El operario debe existir en la lista de Operadores.', 'warning');
       return;
     }
 
@@ -63,21 +109,25 @@ const InformarRegistroLab = () => {
       const body = {
         rutina: codigo.trim(),
         fecha_ingreso_laboratorio: fechaActual,
+        usuario: operarioValido,
       };
 
       const respuesta = await putRegistroLaboratorio(body);
 
       if (respuesta?.success) {
-        showSnackbar(`Rutina ${codigo} registrada correctamente.`, 'success');
+        showSnackbar(
+          `Rutina ${codigo.trim()} registrada (Entrada) — ${operarioValido} — ${fechaActual}`,
+          'success'
+        );
+        setCodigo('');
       } else {
-        showSnackbar(`No se encontró la rutina ${codigo}.`, 'warning');
+        showSnackbar(`No se encontró la rutina ${codigo.trim()}.`, 'warning');
       }
     } catch (error) {
       console.error('Error al registrar rutina:', error);
       showSnackbar('Error al conectar con el servidor.', 'error');
     } finally {
       setLoading(false);
-      setCodigo('');
       inputRef.current?.focus();
     }
   };
@@ -91,7 +141,7 @@ const InformarRegistroLab = () => {
     if (e.key === 'Enter') handleSearch();
   };
 
-  return (
+  const content = (
     <Box
       sx={{
         display: 'flex',
@@ -106,7 +156,7 @@ const InformarRegistroLab = () => {
     >
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={3000}
+        autoHideDuration={4000}
         onClose={handleSnackbarClose}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         sx={{ zIndex: 2000, position: 'absolute', top: 0 }}
@@ -125,19 +175,19 @@ const InformarRegistroLab = () => {
                 mb: 0.5,
               }}
             >
-              Ingreso laboratorio
+              Ingreso de muestra a laboratorio
             </Typography>
             <Typography
               variant="body2"
               sx={{ fontFamily: typography.fontFamily, color: colors.textMuted, mb: 1.5 }}
             >
-              Escaneá o ingresá el código de muestra para registrar el ingreso.
+              Escaneá o ingresá el código de rutina, escribí o elegí el operario y registrá la Entrada.
             </Typography>
           </Grid>
 
           <Grid item xs={12}>
             <TextField
-              label="Código de muestra"
+              label="Código de muestra / rutina"
               variant="outlined"
               value={codigo}
               onChange={(e) => setCodigo(e.target.value)}
@@ -145,15 +195,29 @@ const InformarRegistroLab = () => {
               inputRef={inputRef}
               fullWidth
               autoFocus
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  fontFamily: 'Poppins',
-                  borderRadius: '10px',
-                },
-                '& .MuiInputLabel-root': {
-                  fontFamily: 'Poppins',
-                },
-              }}
+              sx={fieldSx}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <Autocomplete
+              freeSolo
+              options={nombresOperarios}
+              value={operario}
+              loading={loadingOperarios}
+              onChange={(_, newValue) => setOperario(newValue || '')}
+              onInputChange={(_, newInputValue) => setOperario(newInputValue || '')}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Operario responsable"
+                  variant="outlined"
+                  required
+                  helperText={loadingOperarios ? 'Cargando operarios…' : ''}
+                  onKeyDown={handleKeyPress}
+                  sx={fieldSx}
+                />
+              )}
             />
           </Grid>
 
@@ -172,7 +236,7 @@ const InformarRegistroLab = () => {
                   borderRadius: '10px',
                 }}
               >
-                Borrar
+                Borrar código
               </Button>
 
               <LoadingButton
@@ -181,7 +245,7 @@ const InformarRegistroLab = () => {
                 onClick={handleSearch}
                 sx={{ flex: 1, ...primaryBtnSx }}
               >
-                Informar registro
+                Registrar entrada
               </LoadingButton>
             </Box>
           </Grid>
@@ -189,6 +253,29 @@ const InformarRegistroLab = () => {
       </CardAlpa>
     </Box>
   );
+
+  if (withChrome) {
+    return (
+      <HeaderYFooter
+        titulo="INGRESO MUESTRA LAB"
+        routes={[
+          {
+            name: 'HOME',
+            key: 'Home',
+            route: '/BuenosAires/FlorencioVarela/AlpacladdHome',
+            target: '_self',
+          },
+        ]}
+        color="alpacladd"
+        showMainMenu={false}
+        showFooter={false}
+      >
+        {content}
+      </HeaderYFooter>
+    );
+  }
+
+  return content;
 };
 
 export default InformarRegistroLab;

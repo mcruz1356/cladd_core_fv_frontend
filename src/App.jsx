@@ -118,11 +118,6 @@ function App() {
         element={<FormularioReprocesos />}
       />
 
-      <Route
-        path="/BuenosAires/FlorencioVarelaAlpacladd/components/InformarRegistroLab"
-        element={<InformarRegistroLab />}
-      />
-
       {/* TERMINACION */}
       <Route
         path="/BuenosAires/FlorencioVarela/Terminacion"
@@ -155,6 +150,29 @@ function App() {
         element={<FormularioRegistrarMuestra />}
       />
 
+      {/* LABORATORIO — sin panel hub; ingreso públicos */}
+      <Route
+        path="/BuenosAires/FlorencioVarela/Laboratorio"
+        element={<Navigate to="/BuenosAires/FlorencioVarela/AlpacladdHome" replace />}
+      />
+      <Route
+        path="/BuenosAires/FlorencioVarela/Laboratorio/IngresoMuestra"
+        element={<InformarRegistroLab withChrome />}
+      />
+      <Route
+        path="/BuenosAires/FlorencioVarelaAlpacladd/components/InformarRegistroLab"
+        element={<InformarRegistroLab withChrome />}
+      />
+      <Route
+        path="/BuenosAires/FlorencioVarela/Laboratorio/Login"
+        element={
+          <LoginLabFV
+            subtitle="Iniciar sesión para acceder al módulo de laboratorio"
+            dashboardPath="/BuenosAires/FlorencioVarela/AlpacladdHome"
+          />
+        }
+      />
+
       {/* LABORATORIO / STOCK CALIDAD - rutas protegidas */}
       <Route
         element={
@@ -164,7 +182,7 @@ function App() {
         }
       >
         <Route
-          path="/BuenosAires/FlorencioVarela/Laboratorio"
+          path="/BuenosAires/FlorencioVarela/Laboratorio/App"
           element={<FVLaboratorio />}
         />
         <Route
@@ -172,12 +190,6 @@ function App() {
           element={<StockCalidad withChrome />}
         />
       </Route>
-      <Route
-        path="/BuenosAires/FlorencioVarela/Laboratorio/Login"
-        element={
-          <LoginLabFV subtitle="Iniciar sesión para acceder al módulo de laboratorio" />
-        }
-      />
 
       <Route path="/formulario-ensayos/:rutinaId" element={<FormularioEnsayos />} />
       <Route path="/ver-rutina/:rutinaId" element={<VerRutina />} />

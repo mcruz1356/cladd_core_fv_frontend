@@ -36,6 +36,14 @@ async function getReporteLaboratorio() {
     let respuesta = await axios.get(URL_SERVIDOR + PUERTO_FV_LABORATORIO + "BuenosAires/laboratorio/getReporte");
     return (respuesta);
 }
+
+async function getReporteRutinasFiltrado(body) {
+    let respuesta = await axios.post(
+        URL_SERVIDOR + PUERTO_FV_LABORATORIO + "BuenosAires/laboratorio/getReporte/filtrado",
+        body || {}
+    );
+    return respuesta;
+}
 async function putInventarioPlanta(body) {
     let respuesta = await axios.put(URL_SERVIDOR + PUERTO_FV_PRODUCTIVIDAD + "Inventario/cargaManual", body);
     return respuesta;
@@ -94,8 +102,9 @@ async function putRegistrarMuestra(body) {
 }
 
 async function validarDatosMuestras(rollo) {
+    const codigo = encodeURIComponent(String(rollo || '').trim());
     return await axios.get(
-        `${URL_SERVIDOR}${PUERTO_FV_LABORATORIO}BuenosAires/Laboratorio/ValidarDatosMuestras/${rollo}`
+        `${URL_SERVIDOR}${PUERTO_FV_LABORATORIO}BuenosAires/Laboratorio/ValidarDatosMuestras/${codigo}`
     );
 }
 
@@ -126,8 +135,11 @@ async function getResumenRutinas() {
     const response = await axios.get(URL_SERVIDOR + PUERTO_FV_LABORATORIO + 'BuenosAires/Laboratorio/ResumenRutinas');
     return response;
 }
-async function getRutinasTerminadas() {
-    let respuesta = await axios.get(URL_SERVIDOR + PUERTO_FV_LABORATORIO + "BuenosAires/Laboratorio/RutinasFinalizadas");
+async function getRutinasTerminadas(force = false) {
+    const qs = force ? '?force=1' : '';
+    let respuesta = await axios.get(
+        URL_SERVIDOR + PUERTO_FV_LABORATORIO + "BuenosAires/Laboratorio/RutinasFinalizadas" + qs
+    );
     return respuesta;
 }
 
@@ -323,6 +335,7 @@ export {
     PutEnsayoDeRutina,
     getEstadoRollos,
     getReporteLaboratorio,
+    getReporteRutinasFiltrado,
     putInventarioPlanta,
     putFinalizarEnsayo,
     getDatosEnsayo,

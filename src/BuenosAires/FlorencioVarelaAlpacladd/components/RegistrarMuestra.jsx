@@ -9,7 +9,7 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import Test from '../Test';
 import { useAuth } from '../../../AuthContext';
 import DataGridTable from '../../../components/DataGrid/DataGridTable';
-import { getArticulosFV, getTarimasUsadas, getTodasRutinas, getUltimaRutinaLab, putRegistrarMuestra, getArticuloInicialFV } from '../API/APIFunctions';
+import { getArticulosFV, getTarimasUsadas, getTodasRutinas, getUltimaRutinaLab, putRegistrarMuestra, getArticuloInicialFV, getBuscarRolloDeposito } from '../API/APIFunctions';
 import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd';
 import MensajeDialog from '../../../components/Plantilla/MensajeDialog';
 import HeaderYFooter from '../../../components/Plantilla/HeaderYFooter';
@@ -58,6 +58,9 @@ function RegistrarMuestra() {
     cancelar: null
   });
   const [popupTarima, setPopupTarima] = useState({ open: false, tarima: '' });
+  const [camposRolloBloqueados, setCamposRolloBloqueados] = useState(false);
+  const [loadingRollo, setLoadingRollo] = useState(false);
+  const ultimoRolloConsultado = useRef('');
 
 
 
@@ -123,7 +126,8 @@ function RegistrarMuestra() {
     setMuestra(Array(1).fill(''));
     setEstadoTela('');
     setRama('');
-
+    setCamposRolloBloqueados(false);
+    ultimoRolloConsultado.current = '';
   }
   const handleIncremento = () => {
     setNumCampos(numCampos + 1);
@@ -500,6 +504,8 @@ async function registrarMuestras() {
 
   async function handleSelectArticulo(event, newValue) {
     setArticuloTerminado(newValue);
+    // Artículo Crudo se completa desde el rollo; no sobrescribir si ya está bloqueado
+    if (camposRolloBloqueados) return;
     if (newValue) {
       try {
         let response = await getArticuloInicialFV(newValue);
@@ -519,9 +525,91 @@ async function registrarMuestras() {
       setTarima(newValue);
     }
   }
-function handleChangeRollo(event) {
-  setRollo(event.target.value);
-}
+
+  async function completarDatosDesdeRollo(valorRollo) {
+    const rolloTrim = (valorRollo || '').trim();
+    if (!rolloTrim || rolloTrim.length < 6) {
+      setCamposRolloBloqueados(false);
+      setArticuloValue('');
+      setOrdenTrabajo('');
+      ultimoRolloConsultado.current = '';
+      return;
+    }
+
+    // Evita consultas repetidas (onBlur / Enter / reintentos al cerrar el diálogo)
+    if (ultimoRolloConsultado.current === rolloTrim || loadingRollo) return;
+
+    ultimoRolloConsultado.current = rolloTrim;
+    setLoadingRollo(true);
+    try {
+      // Endpoint ya existente en el servidor: /BuscarRolloEnStock/:rollo
+      const respuesta = await getBuscarRolloDeposito(rolloTrim);
+      const lista = Array.isArray(respuesta?.data) ? respuesta.data : [];
+      const row = lista[0];
+
+      if (row) {
+        const articulo = row.articulo || '';
+        const orden = row.orden_lr
+          ? String(row.orden_lr).split('/')[0]
+          : (row.orden || '');
+
+        setArticuloValue(articulo);
+        setOrdenTrabajo(orden);
+        setCamposRolloBloqueados(Boolean(articulo || orden));
+        // No forzar focus: permite Tab natural a "Anidar Rutina"
+      } else {
+        setArticuloValue('');
+        setOrdenTrabajo('');
+        setCamposRolloBloqueados(false);
+        setMensaje('El rollo ingresado no fue encontrado en stock.');
+        setTipo('error');
+        setIsOpen(true);
+      }
+    } catch (error) {
+      console.error('Error al validar rollo:', error);
+      ultimoRolloConsultado.current = '';
+      const msgApi =
+        error?.response?.data?.message ||
+        error?.response?.data?.motivo ||
+        error?.message;
+      setCamposRolloBloqueados(false);
+      setMensaje(
+        msgApi
+          ? `Error al consultar el rollo: ${msgApi}`
+          : 'Error al consultar datos del rollo. ¿El backend está en marcha?'
+      );
+      setTipo('error');
+      setIsOpen(true);
+    } finally {
+      setLoadingRollo(false);
+    }
+  }
+
+  function handleChangeRollo(event) {
+    const inputValue = event.target.value;
+    setRollo(inputValue);
+
+    if (!inputValue || inputValue.trim().length < 6) {
+      setCamposRolloBloqueados(false);
+      setArticuloValue('');
+      setOrdenTrabajo('');
+      ultimoRolloConsultado.current = '';
+    }
+  }
+
+  function handleBlurRollo() {
+    if ((rollo || '').trim().length >= 6) {
+      completarDatosDesdeRollo(rollo);
+    }
+  }
+
+  function handleKeyDownRollo(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      completarDatosDesdeRollo(rollo);
+    }
+    // Tab: dejar el comportamiento nativo (pasa a Anidar Rutina)
+  }
 
 
 
@@ -592,7 +680,9 @@ function handleChangeRollo(event) {
                     variant="outlined"
                     value={rollo}
                     onChange={handleChangeRollo}
-
+                    onBlur={handleBlurRollo}
+                    onKeyDown={handleKeyDownRollo}
+                    helperText={loadingRollo ? 'Buscando datos del rollo…' : 'Enter o salir del campo para cargar artículo/orden'}
                     InputProps={{
                       endAdornment: (
                         <PinIcon position="end">
@@ -653,7 +743,9 @@ function handleChangeRollo(event) {
                     value={ordenTrabajo}
                     inputRef={nextTextFieldRefOrden}
                     onChange={(e) => setOrdenTrabajo(e.target.value)}
+                    disabled={camposRolloBloqueados}
                     InputProps={{
+                      readOnly: camposRolloBloqueados,
                       endAdornment: (
                         <AbcIcon position="end">
                         </AbcIcon>
@@ -687,8 +779,9 @@ function handleChangeRollo(event) {
                     label="Artículo Crudo"
                     variant="outlined"
                     value={ArticuloValue}
-                    readOnly
+                    disabled={camposRolloBloqueados}
                     InputProps={{
+                      readOnly: true,
                       endAdornment: (
                         <PinIcon position="end">
                         </PinIcon>

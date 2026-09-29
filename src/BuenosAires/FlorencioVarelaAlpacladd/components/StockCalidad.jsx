@@ -467,17 +467,17 @@ const StockCalidad = ({ withChrome = false }) => {
     };
 
     const columns = [
-        // { width: '100', field: 'alerta', headerName: 'Alerta', headerClassName: 'super-app-theme--header' },
-        { width: '30', field: 'tarima', headerName: 'Tari', headerClassName: 'super-app-theme--header' },
-        { width: '90', field: 'articulo_final', headerName: 'Artículo', headerClassName: 'super-app-theme--header' },
-        { width: '90', field: 'rollo', headerName: 'Lote', headerClassName: 'super-app-theme--header' },
-        { width: '80', field: 'orden', headerName: 'Orden', headerClassName: 'super-app-theme--header' },
-        { width: '30', field: 'letra', headerName: 'Letr', headerClassName: 'super-app-theme--header' },
-        { width: '60', field: 'largo', headerName: 'Metros', headerClassName: 'super-app-theme--header' },
-        // { width: '100', field: 'sector', headerName: 'Sector', headerClassName: 'super-app-theme--header' },
-        { width: '90', field: 'fecha_muestra', headerName: 'Fecha', headerClassName: 'super-app-theme--header' },
+        // { flex: 1, minWidth: 80, field: 'alerta', headerName: 'Alerta', headerClassName: 'super-app-theme--header' },
+        { flex: 0.4, minWidth: 50, field: 'tarima', headerName: 'Tari', headerClassName: 'super-app-theme--header' },
+        { flex: 1, minWidth: 90, field: 'articulo_final', headerName: 'Artículo', headerClassName: 'super-app-theme--header' },
+        { flex: 1, minWidth: 90, field: 'rollo', headerName: 'Lote', headerClassName: 'super-app-theme--header' },
+        { flex: 0.9, minWidth: 80, field: 'orden', headerName: 'Orden', headerClassName: 'super-app-theme--header' },
+        { flex: 0.4, minWidth: 50, field: 'letra', headerName: 'Letr', headerClassName: 'super-app-theme--header' },
+        { flex: 0.7, minWidth: 70, field: 'largo', headerName: 'Metros', headerClassName: 'super-app-theme--header' },
+        // { flex: 1, minWidth: 80, field: 'sector', headerName: 'Sector', headerClassName: 'super-app-theme--header' },
+        { flex: 1, minWidth: 90, field: 'fecha_muestra', headerName: 'Fecha', headerClassName: 'super-app-theme--header' },
         {
-            width: '90', field: 'estado_laboratorio', headerName: 'Lab', headerClassName: 'super-app-theme--header',
+            flex: 1, minWidth: 90, field: 'estado_laboratorio', headerName: 'Lab', headerClassName: 'super-app-theme--header',
             renderCell: (params) => (
                 <Typography sx={{ fontWeight: 600, fontSize: 12 }}>
                     {params.row.estado_laboratorio === "Finalizado" ? params.row.resultado_laboratorio : params.row.estado_laboratorio}
@@ -486,12 +486,13 @@ const StockCalidad = ({ withChrome = false }) => {
 
         },
         {
-            width: '100', field: 'observaciones', headerName: 'Obs lab', headerClassName: 'super-app-theme--header'
+            flex: 1.1, minWidth: 100, field: 'observaciones', headerName: 'Obs lab', headerClassName: 'super-app-theme--header'
         },
         {
             field: 'resultado_tren_fallas',
             headerName: 'Tren de F',
-            width: '90',
+            flex: 1,
+            minWidth: 90,
             headerClassName: 'super-app-theme--header',
             renderCell: (params) => (
                 <>
@@ -509,7 +510,7 @@ const StockCalidad = ({ withChrome = false }) => {
             ),
         },
         {
-            width: '90', field: 'resultado_corte',
+            flex: 1, minWidth: 90, field: 'resultado_corte',
             headerName: 'Corte',
             headerClassName: 'super-app-theme--header',
             renderCell: (params) => (
@@ -525,7 +526,7 @@ const StockCalidad = ({ withChrome = false }) => {
             ),
         },
         {
-            width: '90', field: 'resultado_lavadero',
+            flex: 1, minWidth: 90, field: 'resultado_lavadero',
             headerName: 'Lavadero',
             headerClassName: 'super-app-theme--header',
             renderCell: (params) => (
@@ -541,7 +542,7 @@ const StockCalidad = ({ withChrome = false }) => {
             ),
         },
         {
-            width: '90', field: 'resultado_color',
+            flex: 1, minWidth: 90, field: 'resultado_color',
             headerName: 'Color',
             headerClassName: 'super-app-theme--header',
             renderCell: (params) => (
@@ -557,7 +558,7 @@ const StockCalidad = ({ withChrome = false }) => {
             ),
         },
         {
-            width: '90', field: 'resultado_secuencia',
+            flex: 1, minWidth: 90, field: 'resultado_secuencia',
             headerName: 'Secuencia',
             headerClassName: 'super-app-theme--header',
             renderCell: (params) => (
@@ -573,7 +574,7 @@ const StockCalidad = ({ withChrome = false }) => {
             ),
         },
         {
-            width: '90', field: 'resultado_pegado',
+            flex: 1, minWidth: 90, field: 'resultado_pegado',
             headerName: 'Pegado',
             headerClassName: 'super-app-theme--header',
             renderCell: (params) => (
@@ -589,7 +590,7 @@ const StockCalidad = ({ withChrome = false }) => {
             ),
         },
         {
-            width: '90', field: 'resultado_cerrado',
+            flex: 1, minWidth: 90, field: 'resultado_cerrado',
             headerName: 'Cerrado',
             headerClassName: 'super-app-theme--header',
             renderCell: (params) => (
@@ -605,7 +606,7 @@ const StockCalidad = ({ withChrome = false }) => {
             ),
         },
         {
-            width: '100', field: 'archivar', headerName: 'Archivar', headerClassName: 'super-app-theme--header',
+            flex: 1, minWidth: 100, field: 'archivar', headerName: 'Archivar', headerClassName: 'super-app-theme--header',
             renderCell: (params) => (
                 <Button sx={{ color: 'red' }} onClick={() => handleArchivar(params)}>
                     Archivar
@@ -617,7 +618,7 @@ const StockCalidad = ({ withChrome = false }) => {
     ];
 
     const content = (
-        <>
+        <Box sx={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
             <DataGridCalidad rows={rows} columns={columns} />
             <Modal
                 open={openModal}
@@ -671,7 +672,7 @@ const StockCalidad = ({ withChrome = false }) => {
                 isOpen={isOpen}
                 onClose={() => setIsOpen(false)}
             />
-        </>
+        </Box>
     );
 
     if (withChrome) {

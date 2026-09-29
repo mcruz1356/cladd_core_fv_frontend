@@ -1,4 +1,4 @@
-import { Grid, Typography, Card, Modal, TextField, Button, Select, MenuItem, FormControl, InputLabel, Box, Dialog, DialogTitle } from "@mui/material";
+import { Grid, Typography, Card, Modal, TextField, Button, Select, MenuItem, FormControl, InputLabel, Box, Dialog, DialogTitle, Alert } from "@mui/material";
 import RenglonForm from './RenglonForm'
 import RenglonFormTriple from "./RenglonFormTriple";
 import RenglonFormSigno from './RenglonFormSigno';
@@ -17,6 +17,7 @@ import MensajeDialog from '../../../components/Plantilla/MensajeDialog';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useParams } from 'react-router-dom';
 import { colors, typography } from '../../../styles/alpacladdFvDesignTokens';
+import Test from '../Test';
 
 const cardSx = {
     borderRadius: '12px',
@@ -141,6 +142,16 @@ function FormularioEnsayos({ rutina, handleTabChange }) {
     const [grabUrdidoSinLavarCal, setgrabUrdidoSinLavarCal] = useState(null);
     const [anchoLavadoCal, setAnchoLavadoCal] = useState(null);
     const [refElasticidad, setRefElasticidad] = useState(null);
+    const [tarima, setTarima] = useState('');
+    const [ordenTrabajo, setOrdenTrabajo] = useState('');
+    const [anidarRutina, setAnidarRutina] = useState('');
+    const [informeResultado, setInformeResultado] = useState('');
+    const [articuloInicial, setArticuloInicial] = useState('');
+    const [lugarMuestra, setLugarMuestra] = useState('');
+    const [operarioRegistro, setOperarioRegistro] = useState('');
+    const [fechaRegistro, setFechaRegistro] = useState('');
+    const [corteMuestra, setCorteMuestra] = useState('');
+    const [qrEtiqueta, setQrEtiqueta] = useState('');
 
 
 
@@ -154,29 +165,32 @@ function FormularioEnsayos({ rutina, handleTabChange }) {
     const [isOpen, setIsOpen] = useState(false);
 
     const { rutinaId } = useParams();
-    useEffect(() => {
-        const rutinaFinal = rutinaId || rutina;
-        if (rutinaFinal) {
-            getDataRutina(rutinaFinal);
-        }
-    }, [rutinaId, rutina]);
+    const rutinaActiva = String(rutinaId || rutina || '').trim();
 
     useEffect(() => {
-        if (rutinaId) {
-            document.title = `Rutina ${rutinaId}`;
+        if (rutinaActiva) {
+            document.title = `Rutina ${rutinaActiva}`;
         } else {
             document.title = 'Rutina';
         }
-    }, [rutinaId]);
+    }, [rutinaActiva]);
 
     useEffect(() => {
         const fetchData = async () => {
+            if (!rutinaActiva) {
+                setLoading(false);
+                return;
+            }
             try {
-                await getDataRutina(rutina);
-                await fetchDatosDeEnsayo(rutina);
+                const status = await getDataRutina(rutinaActiva);
+                // Formulario de ensayos recién desde Entrada en adelante
+                if (status && String(status).trim().toLowerCase() !== 'registro') {
+                    await fetchDatosDeEnsayo(rutinaActiva);
+                }
                 await fetchResultadosPosibles();
             } catch (error) {
-                setMensaje(`Error al cargar los datos de la rutina ${rutina}`);
+                console.error('Error al cargar rutina:', error);
+                setMensaje(`Error al cargar los datos de la rutina ${rutinaActiva}`);
                 setTipo("error");
                 setIsOpen(true);
             } finally {
@@ -184,7 +198,8 @@ function FormularioEnsayos({ rutina, handleTabChange }) {
             }
         };
         fetchData();
-    }, []);
+    }, [rutinaActiva]);
+
     useEffect(() => {
         if (loading) {
             document.body.style.overflow = 'hidden';
@@ -302,16 +317,19 @@ function FormularioEnsayos({ rutina, handleTabChange }) {
         handleClose();
     };
 
-    async function getDataRutina(rutina) {
+    async function getDataRutina(rutinaParam) {
+        const rutinaBuscada = String(rutinaParam || '').trim();
+        if (!rutinaBuscada) {
+            return null;
+        }
 
         try {
-
-            const respuesta = await getRutinasLaboratorio(rutina);
-            if (respuesta.data.length === 0) {
-                setMensaje(`No se encontró la especificación de la ${rutina}`);
+            const respuesta = await getRutinasLaboratorio(rutinaBuscada);
+            if (!respuesta.data?.length) {
+                setMensaje(`No se encontró la especificación de la ${rutinaBuscada}`);
                 setTipo("error");
                 setIsOpen(true);
-                return;
+                return null;
             }
             dataRaw = respuesta.data[0];
             setArticulo(dataRaw.articulo_final);
@@ -320,16 +338,36 @@ function FormularioEnsayos({ rutina, handleTabChange }) {
             setLetra(dataRaw.letra);
             setEtapa(dataRaw.status);
             setMotivo(dataRaw.motivo);
-            setSubLote(dataRaw.sublote);
+            setSubLote(dataRaw.sublote || dataRaw.sub_lote || '');
             setResultadoRutinaTerminada(dataRaw.resultado)
             setResultadoEnsayo(dataRaw.resultado);
             setObservaciones(dataRaw.observaciones)
             setDibujo(dataRaw.dibujo)
-            await fetchEspecificacion(dataRaw.articulo_final, dataRaw.motivo.toUpperCase());
+            setTarima(dataRaw.tarima || '');
+            setOrdenTrabajo(dataRaw.orden_trabajo || '');
+            setAnidarRutina(dataRaw.anidar_rutina || '');
+            setInformeResultado(dataRaw.sector_a_informar || dataRaw.informe_resultado || '');
+            setArticuloInicial(dataRaw.articulo_inicial || dataRaw.articulo_crudo || '');
+            setLugarMuestra(dataRaw.lugar_muestra || '');
+            setOperarioRegistro(dataRaw.operario || '');
+            setFechaRegistro(dataRaw.fecha || '');
+            setCorteMuestra(dataRaw.corte || dataRaw.muestra || '');
+            const loteQr = String(dataRaw.lote || '');
+            setQrEtiqueta(
+              loteQr
+                ? `http://192.168.40.95:4006/codigoqrrevisado/${encodeURIComponent(loteQr.slice(-5))}`
+                : ''
+            );
+            if (dataRaw.articulo_final && dataRaw.motivo) {
+                await fetchEspecificacion(dataRaw.articulo_final, String(dataRaw.motivo).toUpperCase());
+            }
+            return dataRaw.status;
         } catch (error) {
-            setMensaje("Error: ", error);
+            console.error('Error en getDataRutina:', error);
+            setMensaje(`No se pudo cargar la rutina ${rutinaBuscada}`);
             setTipo("error");
             setIsOpen(true);
+            return null;
         }
     }
     function getOrdenEtapas() {
@@ -343,6 +381,7 @@ function FormularioEnsayos({ rutina, handleTabChange }) {
     }
 
     function setearDatos(datos) {
+        if (!datos) return;
         if (datos.ancho_sin_lavar_1 !== null) setAnchoSinLavar1(datos.ancho_sin_lavar_1);
         if (datos.ancho_sin_lavar_2 !== null) setAnchoSinLavar2(datos.ancho_sin_lavar_2);
         if (datos.peso_sin_lavar_1 !== null) setPesoSinLavar1(datos.peso_sin_lavar_1);
@@ -409,42 +448,38 @@ function FormularioEnsayos({ rutina, handleTabChange }) {
         if (datos.grab_urdido_sin_lavar_2 !== null) setGrabUrdidoSinLavar2(datos.grab_urdido_sin_lavar_2);
     }
 
-    async function fetchDatosDeEnsayo(rutina) {
-  try {
-    let respuesta = await getDatosEnsayo(rutina);
+    async function fetchDatosDeEnsayo(rutinaParam) {
+        const rutinaBuscada = String(rutinaParam || '').trim();
+        if (!rutinaBuscada) {
+            return;
+        }
 
-    // 🟩 Agrego console.log para ver todo lo que llega
-    console.log("🔍 RESPUESTA COMPLETA DEL BACKEND getDatosEnsayo:", respuesta);
+        try {
+            const respuesta = await getDatosEnsayo(rutinaBuscada);
 
-    if (respuesta.data) {
-      // Si el backend retorna un solo objeto (no array)
-      const datos = Array.isArray(respuesta.data) ? respuesta.data[0] : respuesta.data;
+            if (respuesta.data) {
+                const datos = Array.isArray(respuesta.data) ? respuesta.data[0] : respuesta.data;
+                setearDatos(datos);
 
-      console.log("📦 DATOS PARSEADOS:", datos); // 👈 Esto muestra el objeto real que estás usando
+                if (datos?.dibujo !== null && datos?.dibujo !== undefined) setDibujo(datos.dibujo);
 
-      setearDatos(datos);
-
-      if (datos.dibujo !== null) setDibujo(datos.dibujo);
-
-      // 👇 Nuevo: guardar la referencia de elasticidad
-      if (datos.ref_elasticidad !== undefined && datos.ref_elasticidad !== null) {
-        console.log("✅ ref_elasticidad detectado:", datos.ref_elasticidad);
-        setRefElasticidad(datos.ref_elasticidad);
-      } else {
-        console.warn("⚠️ No se encontró ref_elasticidad en los datos");
-      }
-    } else {
-      setMensaje(`No se encontraron ensayos registrados para la rutina ${rutina}`);
-      setTipo("error");
-      setIsOpen(true);
+                if (datos?.ref_elasticidad !== undefined && datos?.ref_elasticidad !== null) {
+                    setRefElasticidad(datos.ref_elasticidad);
+                }
+            }
+            // Sin ensayo previo: normal en etapas tempranas; no mostrar error
+        } catch (error) {
+            // 404 / sin ensayo: no bloquear el formulario con mensaje de Axios
+            if (error?.response?.status === 404) {
+                console.warn(`Sin ensayo previo para rutina ${rutinaBuscada}`);
+                return;
+            }
+            console.error('Error en fetchDatosDeEnsayo:', error);
+            setMensaje(`No se pudieron cargar los ensayos de la rutina ${rutinaBuscada}`);
+            setTipo('error');
+            setIsOpen(true);
+        }
     }
-  } catch (error) {
-    console.error("❌ Error en fetchDatosDeEnsayo:", error);
-    setMensaje("error: " + error);
-    setTipo("error");
-    setIsOpen(true);
-  }
-}
 
 
 
@@ -528,26 +563,7 @@ function FormularioEnsayos({ rutina, handleTabChange }) {
 
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                await getDataRutina(rutina);
-                await fetchDatosDeEnsayo(rutina);
-                await fetchResultadosPosibles();
-            } catch (error) {
-                setMensaje(`Error al cargar los datos de la rutina ${rutina}`);
-                setTipo("error");
-                setIsOpen(true);
-            }
-        };
-        fetchData();
-        return () => {
-        }
-    }, [])
-
-    useEffect(() => {
         getOrdenEtapas(etapa);
-        return () => {
-        }
     }, [etapa])
 
 
@@ -763,6 +779,157 @@ function FormularioEnsayos({ rutina, handleTabChange }) {
                     Aguarde un momento por favor.
                 </Typography>
             </Box>
+        );
+    }
+
+    if (!rutinaActiva) {
+        return (
+            <Box sx={{ px: { xs: 1, md: 2 }, py: 3 }}>
+                <Alert severity="info" sx={{ fontFamily: typography.fontFamily, borderRadius: '10px' }}>
+                    No hay una rutina seleccionada. Abrí una desde <strong>Rutinas activas</strong> para cargar el formulario.
+                </Alert>
+            </Box>
+        );
+    }
+
+    if (String(etapa || '').trim().toLowerCase() === 'registro') {
+        const rutinaMostrada = rutina || rutinaId;
+        return (
+            <Grid container direction="row" justifyContent="center" alignItems="flex-start" p={1.5} rowSpacing={1.5} pt={1.5}>
+                <Grid item xs={12}>
+                    <Alert severity="info" sx={{ fontFamily: typography.fontFamily, borderRadius: '10px' }}>
+                        Rutina en <strong>Registro</strong>. Vista previa de datos y etiqueta. El formulario de ensayos se habilita desde <strong>Entrada</strong>.
+                    </Alert>
+                </Grid>
+
+                <Grid item xs={12}>
+                    <Card sx={{ ...cardSx, px: 1 }}>
+                        <Grid container direction="row" justifyContent="flex-start" alignItems="center" rowSpacing={1} py={1} px={0.5}>
+                            <Grid item xs={2}>
+                                <Typography sx={metaTextSx}>Rutina:<span>{` ${rutinaMostrada}`}</span></Typography>
+                            </Grid>
+                            <Grid item xs={1}>
+                                <Typography sx={metaTextSx}>Letra: <span>{` ${letra}`}</span></Typography>
+                            </Grid>
+                            <Grid item xs={1.5}>
+                                <Typography sx={metaTextSx}>Metros: <span>{` ${metros}`}</span></Typography>
+                            </Grid>
+                            <Grid item xs={1.5}>
+                                <Typography sx={metaTextSx}>Etapa: <span>{` ${etapa}`}</span></Typography>
+                            </Grid>
+                            <Grid item xs={1.5}>
+                                <Typography sx={metaTextSx}>Artículo: <span>{` ${articulo}`}</span></Typography>
+                            </Grid>
+                            <Grid item xs={1.5}>
+                                <Typography sx={metaTextSx}>Lote: <span>{` ${lote}`}</span></Typography>
+                            </Grid>
+                            <Grid item xs={1.5}>
+                                <Typography sx={metaTextSx}>SubLote: <span>{` ${subLote}`}</span></Typography>
+                            </Grid>
+                            <Grid item xs={1.5}>
+                                <Typography sx={metaTextSx}>Motivo: <span>{` ${motivo}`}</span></Typography>
+                            </Grid>
+                        </Grid>
+                    </Card>
+                </Grid>
+
+                <Grid item xs={12}>
+                    <Card sx={{ ...cardSx, p: 2 }}>
+                        <Typography sx={{ fontFamily: typography.fontFamily, fontWeight: 700, color: colors.brand, mb: 1.5 }}>
+                            Datos de la muestra
+                        </Typography>
+                        <Grid container spacing={1.5}>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <Typography sx={metaTextSx}>Artículo crudo: <span style={{ fontWeight: 700 }}>{articuloInicial || '-'}</span></Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <Typography sx={metaTextSx}>Orden de trabajo: <span style={{ fontWeight: 700 }}>{ordenTrabajo || '-'}</span></Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <Typography sx={metaTextSx}>Tarima: <span style={{ fontWeight: 700 }}>{tarima || '-'}</span></Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <Typography sx={metaTextSx}>Anidar rutina: <span style={{ fontWeight: 700 }}>{anidarRutina || '-'}</span></Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <Typography sx={metaTextSx}>Muestra/corte: <span style={{ fontWeight: 700 }}>{corteMuestra || '-'}</span></Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <Typography sx={metaTextSx}>Informar a: <span style={{ fontWeight: 700 }}>{informeResultado || '-'}</span></Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <Typography sx={metaTextSx}>Lugar muestra: <span style={{ fontWeight: 700 }}>{lugarMuestra || '-'}</span></Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <Typography sx={metaTextSx}>Registró: <span style={{ fontWeight: 700 }}>{operarioRegistro || '-'}</span></Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <Typography sx={metaTextSx}>Fecha: <span style={{ fontWeight: 700 }}>
+                                    {fechaRegistro ? new Date(fechaRegistro).toLocaleString('es-AR') : '-'}
+                                </span></Typography>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <Typography sx={metaTextSx}>Observaciones: <span style={{ fontWeight: 700 }}>{observaciones || '-'}</span></Typography>
+                            </Grid>
+                        </Grid>
+                    </Card>
+                </Grid>
+
+                {(especificacionArticulo?.PRODUCTO_ARTCOD || especificacionArticulo?.PRODUCTO_NOMBRE_COMERCIAL) && (
+                    <Grid item xs={12}>
+                        <Card sx={{ ...cardSx, px: 1 }}>
+                            <Grid container direction="row" justifyContent="flex-start" alignItems="center" rowSpacing={1} py={1} px={0.5}>
+                                <Grid item xs={2}>
+                                    <Typography sx={metaTextSx}>
+                                        Especificación: <span>{especificacionArticulo.PRODUCTO_ARTCOD || ""}</span>
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={2}>
+                                    <Typography sx={metaTextSx}>
+                                        Nombre: <span>{especificacionArticulo.PRODUCTO_NOMBRE_COMERCIAL || ""}</span>
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={4}>
+                                    <Typography sx={metaTextSx}>
+                                        Composición: <span>{especificacionArticulo.PRODUCTO_COMPOSICION || ""}</span>
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={2}>
+                                    <Typography sx={metaTextSx}>
+                                        Ligamento: <span>{especificacionArticulo.PRODUCTO_LIGAMENTO || ""}</span>
+                                    </Typography>
+                                </Grid>
+                            </Grid>
+                        </Card>
+                    </Grid>
+                )}
+
+                <Grid item xs={12}>
+                    <Card sx={{ ...cardSx, p: 2 }}>
+                        <Typography sx={{ fontFamily: typography.fontFamily, fontWeight: 700, color: colors.brand, mb: 1 }}>
+                            Vista previa de etiqueta
+                        </Typography>
+                        <Box sx={{ width: '100%', minHeight: 520 }}>
+                            <Test
+                                rutina={rutinaMostrada}
+                                Rollo={lote}
+                                motivo={motivo}
+                                metrosTotal={metros}
+                                tarima={tarima}
+                                articuloTerminado={articulo}
+                                ordenTrabajo={ordenTrabajo}
+                                anidarRutina={anidarRutina}
+                                subLote={subLote}
+                                anotaciones={observaciones}
+                                informeResultado={informeResultado}
+                                muestra={corteMuestra ? [corteMuestra] : ['']}
+                                QrcodeImageUrl={qrEtiqueta}
+                                reImpresion={true}
+                            />
+                        </Box>
+                    </Card>
+                </Grid>
+            </Grid>
         );
     }
 

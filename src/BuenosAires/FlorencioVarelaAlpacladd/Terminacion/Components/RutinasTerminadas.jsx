@@ -1,59 +1,173 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Typography } from '@mui/material';
-import DataGridTable from '../../../../components/DataGrid/DataGridTable';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Box,
+  Typography,
+  Button,
+  CircularProgress,
+  Stack,
+} from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import DataGridRutinasTerminadas from './DataGridRutinasTerminadas';
 import { getRutinasTerminadas } from '../../API/APIFunctions';
 import { colors, typography, shadows } from '../../../../styles/alpacladdFvDesignTokens';
+import {
+  loadCache,
+  loadCacheAsync,
+  saveCache,
+  fingerprintList,
+  compareFingerprints,
+  normalizeRutinasTerminadasResponse,
+  filterRutinasPorAnio,
+  sortRutinasPorFechaDesc,
+  withRowIds,
+} from './rutinasTerminadasCache';
+
+/** Evita pedidos concurrentes (prefetch + mount). */
+let inflightPromise = null;
+
+const ANIO_FILTRO = 2026;
+
+function prepareItems(raw) {
+  return withRowIds(sortRutinasPorFechaDesc(filterRutinasPorAnio(raw, ANIO_FILTRO)));
+}
+
+/**
+ * Trae del API, filtra año 2026 y actualiza cache. No reformatea fechas.
+ */
+export async function fetchAndCacheRutinasTerminadas({ force = false } = {}) {
+  if (inflightPromise && !force) return inflightPromise;
+
+  const run = (async () => {
+    const respuesta = await getRutinasTerminadas(force);
+    console.log('[RutinasTerminadas] respuesta cruda del API:', respuesta?.data);
+    const raw = normalizeRutinasTerminadasResponse(respuesta?.data);
+    console.log('[RutinasTerminadas] filas normalizadas:', raw?.length, raw);
+    console.log(
+      '[RutinasTerminadas] sample fecha_registro (primeras 10):',
+      (raw || []).slice(0, 10).map((r) => ({
+        rutina: r?.rutina,
+        fecha_registro: r?.fecha_registro,
+        typeof_fecha: typeof r?.fecha_registro,
+      }))
+    );
+    const nextItems = prepareItems(raw);
+    console.log('[RutinasTerminadas] filas tras filtro año ..26:', nextItems?.length);
+    saveCache({ items: nextItems });
+    return nextItems;
+  })();
+
+  inflightPromise = run.finally(() => {
+    inflightPromise = null;
+  });
+  return inflightPromise;
+}
+
+/** Prefetch al entrar a Reportes. */
+export function prefetchRutinasTerminadas() {
+  const cached = loadCache();
+  if (cached?.items?.length) {
+    fetchAndCacheRutinasTerminadas({ force: false }).catch(() => {});
+    return;
+  }
+  loadCacheAsync().then(() => {
+    fetchAndCacheRutinasTerminadas({ force: false }).catch(() => {});
+  });
+}
+
+const btnSx = {
+  fontFamily: 'Poppins',
+  textTransform: 'none',
+  fontWeight: 600,
+  borderRadius: '10px',
+  borderColor: colors.brand,
+  color: colors.brand,
+  '&:hover': { borderColor: colors.brand, backgroundColor: 'rgba(26,72,98,0.06)' },
+};
 
 const RutinasTerminadas = () => {
-  const [rows, setRows] = useState([]);
-  const columns = [
-    { field: 'id', headerName: 'ID', width: 100 },
-    { field: 'lote', headerName: 'Lote', width: 100 },
-    { field: 'rutina', headerName: 'Rutina', width: 150 },
-    { field: 'articulo_final', headerName: 'Articulo', width: 100 },
-    { field: 'resultado', headerName: 'Resultado', width: 150 },
-    { field: 'ancho_sin_lavar_cal', headerName: 'Ancho Sin Lavar', width: 180 },
-    { field: 'peso_sin_lavar_cal', headerName: 'Peso Sin Lavar', width: 180 },
-    { field: 'peso_lavado_cal', headerName: 'Peso Lavado', width: 150 },
-    { field: 'recuento_urdido_cal', headerName: 'Recuento Urdido', width: 180 },
-    { field: 'recuento_trama_cal', headerName: 'Recuento Trama', width: 180 },
-    { field: 'pasadas_por_costo_cal', headerName: 'Pasadas por Costo', width: 180 },
-    { field: 'estabilidad_urdido_cal', headerName: 'Estabilidad Urdido', width: 180 },
-    { field: 'estabilidad_trama_cal', headerName: 'Estabilidad Trama', width: 180 },
-    { field: 'ancho_lavado_cal', headerName: 'Ancho Lavado', width: 150 },
-    { field: 'predistorsion_izq', headerName: 'Predistorsión Izq', width: 180 },
-    { field: 'predistorsion_der', headerName: 'Predistorsión Der', width: 180 },
-    { field: 'movimiento_izq', headerName: 'Movimiento Izq', width: 180 },
-    { field: 'movimiento_der', headerName: 'Movimiento Der', width: 180 },
-    { field: 'elasticidad_sin_lavar_cal', headerName: 'Elasticidad Sin Lavar', width: 180 },
-    { field: 'elasticidad_lavada_cal', headerName: 'Elasticidad Lavada', width: 180 },
-    { field: 'deformacion_lavada_cal', headerName: 'Deformación Lavada', width: 180 },
-    { field: 'elmendorf_urdido_sin_lavar_cal', headerName: 'Elmendorf Urdido Sin Lavar', width: 220 },
-    { field: 'elmendorf_trama_sin_lavar_cal', headerName: 'Elmendorf Trama Sin Lavar', width: 220 },
-    { field: 'desliz_costura_ut_cal', headerName: 'Desliz Costura UT', width: 180 },
-    { field: 'desliz_costura_tu_cal', headerName: 'Desliz Costura TU', width: 180 },
-    { field: 'rigidez_cal', headerName: 'Rigidez', width: 150 },
-    { field: 'fecha_registro', headerName: 'Fecha Registro', width: 150 },
-    { field: 'letra', headerName: 'Letra', width: 150 },
-    { field: 'metros', headerName: 'Metros', width: 150 },
-  ];
+  const initial = loadCache();
+  const [rows, setRows] = useState(() => prepareItems(initial?.items || []));
+  const [loading, setLoading] = useState(() => !(initial?.items?.length));
+  const [refreshing, setRefreshing] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState(() => initial?.updatedAt || null);
+  const mountedRef = useRef(true);
 
-  async function fetchRutinasTerminadas() {
+  const applyRows = useCallback((items, at = Date.now()) => {
+    setRows(prepareItems(items));
+    setUpdatedAt(at);
+  }, []);
+
+  const revalidate = useCallback(async ({ force = false } = {}) => {
+    const hasRows = rows.length > 0 || loadCache()?.items?.length;
+
+    if (force && !hasRows) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
+
     try {
-      const respuesta = await getRutinasTerminadas();
-      if (respuesta.data && Array.isArray(respuesta.data) && respuesta.data.length > 0) {
-        setRows(respuesta.data[0]);
-      } else {
-        setRows([]);
+      const prevCache = loadCache();
+      const prevFp = fingerprintList(prevCache?.items || []);
+      const nextItems = await fetchAndCacheRutinasTerminadas({ force });
+      const nextFp = fingerprintList(nextItems);
+      const { changed } = compareFingerprints(prevFp, nextFp);
+
+      if (!mountedRef.current) return;
+
+      if (force || changed || !prevCache?.items?.length) {
+        applyRows(nextItems, Date.now());
+      } else if (prevCache?.updatedAt) {
+        setUpdatedAt(Date.now());
       }
     } catch (error) {
-      console.log(error);
+      console.error('Error al cargar rutinas terminadas:', error);
+      if (!mountedRef.current) return;
+      const cached = loadCache();
+      if (cached?.items?.length && rows.length === 0) {
+        applyRows(cached.items, cached.updatedAt);
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  }
+  }, [applyRows, rows.length]);
 
   useEffect(() => {
-    fetchRutinasTerminadas();
+    mountedRef.current = true;
+
+    (async () => {
+      if (!rows.length) {
+        const asyncCache = await loadCacheAsync();
+        if (!mountedRef.current) return;
+        if (asyncCache?.items?.length) {
+          applyRows(asyncCache.items, asyncCache.updatedAt);
+          setLoading(false);
+        }
+      }
+
+      revalidate({ force: false });
+    })();
+
+    return () => {
+      mountedRef.current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const updatedLabel = updatedAt
+    ? new Date(updatedAt).toLocaleString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : null;
+
+  const busy = loading || refreshing;
 
   return (
     <Box sx={{ px: { xs: 1, md: 1.5 }, pb: 2 }}>
@@ -67,10 +181,30 @@ const RutinasTerminadas = () => {
           mb: 2,
         }}
       >
-        <Typography sx={{ ...typography.cardTitle, mb: 0.5 }}>Rutinas terminadas</Typography>
-        <Typography sx={{ fontFamily: typography.fontFamily, color: colors.textMuted, fontSize: '0.85rem' }}>
-          Listado de ensayos finalizados con resultados y mediciones
-        </Typography>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          spacing={1.5}
+        >
+          <Box>
+            <Typography sx={{ ...typography.cardTitle, mb: 0.5 }}>Rutinas terminadas</Typography>
+            <Typography sx={{ fontFamily: typography.fontFamily, color: colors.textMuted, fontSize: '0.85rem' }}>
+              Ensayos finalizados del año {ANIO_FILTRO}
+              {updatedLabel ? ` · Actualizado: ${updatedLabel}` : ''}
+              {refreshing ? ' · Buscando novedades…' : ''}
+            </Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            startIcon={busy ? <CircularProgress size={16} /> : <RefreshIcon />}
+            disabled={busy}
+            onClick={() => revalidate({ force: true })}
+            sx={btnSx}
+          >
+            Actualizar
+          </Button>
+        </Stack>
       </Box>
 
       <Box
@@ -80,14 +214,33 @@ const RutinasTerminadas = () => {
           border: '1px solid rgba(26, 72, 98, 0.06)',
           boxShadow: shadows.dashboard,
           overflow: 'hidden',
-          p: 1,
+          p: { xs: 1, md: 1.25 },
+          minHeight: 280,
+          position: 'relative',
         }}
       >
-        <DataGridTable
-          rows={rows}
-          columns={columns}
-          filename={`Rutinas Finalizadas al ${new Date().toLocaleDateString()}`}
-        />
+        {loading && rows.length === 0 ? (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              py: 8,
+              gap: 1.5,
+            }}
+          >
+            <CircularProgress sx={{ color: colors.brand }} />
+            <Typography sx={{ fontFamily: typography.fontFamily, color: colors.textMuted, fontSize: '0.9rem' }}>
+              Cargando rutinas terminadas…
+            </Typography>
+          </Box>
+        ) : (
+          <DataGridRutinasTerminadas
+            rows={rows}
+            filename={`Rutinas Finalizadas ${new Date().toLocaleDateString('es-AR')}`}
+          />
+        )}
       </Box>
     </Box>
   );
