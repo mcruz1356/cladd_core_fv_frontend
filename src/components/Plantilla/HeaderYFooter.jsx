@@ -5,7 +5,7 @@ import { Box, Typography } from "@mui/material";
 import { pageContainer } from "../../styles/alpacladdFvDesignTokens";
 import AlpacladdFvMainMenu from "../../BuenosAires/FlorencioVarelaAlpacladd/components/AlpacladdFvMainMenu";
 
-function HeaderYFooter({ children, titulo, color, routes, showMainMenu = true }) {
+function HeaderYFooter({ children, titulo, color, routes, showMainMenu = true, showFooter = true }) {
   const contentStyle = {
     flexGrow: 1,
     display: "flex",
@@ -55,21 +55,23 @@ function HeaderYFooter({ children, titulo, color, routes, showMainMenu = true })
       </Box> */}
 
       {/* Footer */}
-      <Box
-        display={"flex"}
-        flexDirection={"column"}
-        sx={{
-          position: "fixed",
-          bottom: 16,
-          right: 16,
-          backgroundColor: "rgba(0, 0, 0, 0.5)",
-          padding: "4px 8px",
-          borderRadius: "4px",
-        }}
-      >
-        <Typography variant="caption" color="white">© Automatización - La Rioja</Typography>
-        <Typography variant="caption" color="white">Dirección Industrial</Typography>
-      </Box>
+      {showFooter ? (
+        <Box
+          display={"flex"}
+          flexDirection={"column"}
+          sx={{
+            position: "fixed",
+            bottom: 16,
+            right: 16,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            padding: "4px 8px",
+            borderRadius: "4px",
+          }}
+        >
+          <Typography variant="caption" color="white">© Automatización - La Rioja</Typography>
+          <Typography variant="caption" color="white">Dirección Industrial</Typography>
+        </Box>
+      ) : null}
     </Box>
   );
 }

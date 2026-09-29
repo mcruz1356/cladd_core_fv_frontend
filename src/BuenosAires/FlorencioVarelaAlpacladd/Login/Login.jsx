@@ -10,7 +10,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import MuiAlert from "@mui/material/Alert";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useAuth } from "../../../AuthContext";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import LoginIcon from "@mui/icons-material/Login";
@@ -53,14 +53,19 @@ const LoginLabFV = ({
   subtitle = "Iniciar sesión para acceder al módulo",
   dashboardPath = "/BuenosAires/FlorencioVarela/AlpacladdHome",
 }) => {
-  const { login } = useAuth();
+  const { login, isAuthenticated, auth } = useAuth();
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || "/BuenosAires/FlorencioVarela/Laboratorio";
+  const from = location.state?.from?.pathname || "/BuenosAires/FlorencioVarela/Laboratorio/App";
   const [body, setBody] = useState({ legajo: "", password: "" });
+
+  // Si ya hay sesión en localStorage / contexto, no mostrar login
+  if (isAuthenticated && auth) {
+    return <Navigate to={from} replace />;
+  }
 
   const handleCloseSnackbar = () => setOpenSnackbar(false);
 

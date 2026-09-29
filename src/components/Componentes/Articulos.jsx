@@ -29,7 +29,7 @@ export const Articulos = ({ rol = 'lr' }) => {
     };
 
     const homeTarget = isFv
-        ? '/BuenosAires/FlorencioVarela/Terminacion'
+        ? '/BuenosAires/FlorencioVarela/AlpacladdHome'
         : '/LaRioja/Alpacladd/Productividad/Calidad/';
 
     const tabsConfig = useMemo(() => {

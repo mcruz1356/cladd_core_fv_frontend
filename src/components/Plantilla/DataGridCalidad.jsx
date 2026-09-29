@@ -1,7 +1,7 @@
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
 import SummarizeIcon from '@mui/icons-material/Summarize';
-import { Button, Typography } from '@mui/material';
+import { Box, Button, Typography } from '@mui/material';
 import { GridToolbarContainer, GridToolbarQuickFilter, DataGrid } from '@mui/x-data-grid';
 
 
@@ -48,26 +48,43 @@ const DataGridCalidad = ({ rows, columns }) => {
     }
 
     return (
-        <>
+        <Box
+            sx={{
+                width: '100%',
+                maxWidth: '100%',
+                boxSizing: 'border-box',
+                px: { xs: 1, md: 1.5 },
+                py: 1,
+            }}
+        >
             <DataGrid
                 rows={rows}
                 columns={columns}
                 getRowHeight={() => 'auto'}
-                rowsPerPageOptions={[10,15, 25, 50, 100]}
+                autoHeight
+                disableColumnMenu
+                pageSizeOptions={[10, 15, 25, 50, 100]}
                 initialState={{
                     pagination: {
-                        paginationModel: { pageSize: 15 }, 
+                        paginationModel: { pageSize: 15 },
                     },
                 }}
-
                 sx={{
+                    width: '100%',
+                    maxWidth: '100%',
                     boxShadow: 2,
                     border: 2,
                     fontFamily: "Poppins",
                     fontSize: 12,
                     fontWeight: 600,
-                    margin: "0rem",
+                    margin: 0,
                     backgroundColor: "#f4f4f4",
+                    '& .MuiDataGrid-main': {
+                        width: '100%',
+                    },
+                    '& .MuiDataGrid-virtualScroller': {
+                        overflowX: 'auto',
+                    },
                     '& .super-app-theme--header': {
                         backgroundColor: 'rgba(25, 118, 210,0.2)',
                         fontFamily: 'Poppins',
@@ -80,10 +97,9 @@ const DataGridCalidad = ({ rows, columns }) => {
                     toolbar: {
                         showQuickFilter: true,
                     },
-
                 }}
             />
-        </>
+        </Box>
     )
 }
 

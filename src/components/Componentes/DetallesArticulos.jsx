@@ -1,370 +1,353 @@
-import React from 'react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
   TextField,
   Button,
   Autocomplete,
-  Card,
-  Grid,
-} from '@mui/material/';
+  Stack,
+} from '@mui/material';
 
 import SearchIcon from '@mui/icons-material/Search';
-import DescriptionIcon from '@mui/icons-material/Description';
-import WavesIcon from '@mui/icons-material/Waves';
-import GestureIcon from '@mui/icons-material/Gesture';
-import AbcIcon from '@mui/icons-material/Abc';
-import PinIcon from '@mui/icons-material/Pin';
-import StraightenIcon from '@mui/icons-material/Straighten';
-import NumbersIcon from '@mui/icons-material/Numbers';
-import LinearScaleIcon from '@mui/icons-material/LinearScale';
-import DesignServicesIcon from '@mui/icons-material/DesignServices';
-import CodeIcon from '@mui/icons-material/Code';
-
 import { GetTABLAARTICULOS, GetTABLADETALLES } from '../API/APIFunctions.js';
+import { colors, shadows, typography } from '../../styles/alpacladdFvDesignTokens';
+
+const primaryBtnSx = {
+  background: 'linear-gradient(145deg, #2c4356, #1e2c3a)',
+  fontFamily: 'Poppins',
+  fontWeight: 600,
+  textTransform: 'none',
+  borderRadius: '10px',
+  boxShadow: 'none',
+  height: 40,
+  '&:hover': { background: '#1A4862' },
+};
+
+const filterBarSx = {
+  backgroundColor: '#fff',
+  borderRadius: '12px',
+  border: `1px solid ${colors.borderSlate08}`,
+  boxShadow: shadows.capsule,
+  p: { xs: 1.5, md: 2 },
+};
+
+const cardSx = {
+  backgroundColor: '#fff',
+  borderRadius: '14px',
+  border: `1px solid ${colors.borderCard}`,
+  boxShadow: shadows.dashboard,
+  overflow: 'hidden',
+};
+
+function displayValue(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  if (typeof value === 'number' && Number.isNaN(value)) return '—';
+  return String(value);
+}
+
+function FieldRow({ label, value }) {
+  return (
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', sm: '160px 1fr' },
+        columnGap: 2,
+        rowGap: 0.35,
+        alignItems: 'start',
+        py: 1.1,
+        px: 0.25,
+        borderBottom: '1px solid rgba(26, 72, 98, 0.08)',
+        '&:last-of-type': { borderBottom: 'none' },
+      }}
+    >
+      <Typography
+        sx={{
+          fontFamily: typography.fontFamily,
+          fontSize: '0.78rem',
+          fontWeight: 600,
+          color: colors.textMuted,
+          textTransform: 'uppercase',
+          letterSpacing: '0.03em',
+          lineHeight: 1.4,
+          pt: { sm: 0.15 },
+        }}
+      >
+        {label}
+      </Typography>
+      <Typography
+        sx={{
+          fontFamily: typography.fontFamily,
+          fontSize: '0.95rem',
+          fontWeight: 600,
+          color: colors.textSlate,
+          lineHeight: 1.45,
+          whiteSpace: 'pre-wrap',
+          overflowWrap: 'anywhere',
+          wordBreak: 'break-word',
+        }}
+      >
+        {displayValue(value)}
+      </Typography>
+    </Box>
+  );
+}
+
+function SectionBlock({ title, children }) {
+  return (
+    <Box
+      sx={{
+        border: '1px solid rgba(26, 72, 98, 0.08)',
+        borderRadius: '12px',
+        backgroundColor: 'rgba(26, 72, 98, 0.02)',
+        overflow: 'hidden',
+      }}
+    >
+      <Box
+        sx={{
+          px: 1.75,
+          py: 1,
+          backgroundColor: 'rgba(26, 72, 98, 0.08)',
+          borderBottom: '1px solid rgba(26, 72, 98, 0.08)',
+        }}
+      >
+        <Typography
+          sx={{
+            fontFamily: typography.fontFamily,
+            fontWeight: 700,
+            fontSize: '0.82rem',
+            color: colors.brand,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+          }}
+        >
+          {title}
+        </Typography>
+      </Box>
+      <Box sx={{ px: 1.75, py: 0.5 }}>{children}</Box>
+    </Box>
+  );
+}
 
 const DetallesArticulos = () => {
+  const [detalle, setDetalle] = useState(null);
+  const [articuloSeleccionado, setArticuloSeleccionado] = useState(null);
+  const [articulos, setArticulos] = useState([]);
+  const [inputArticulo, setInputArticulo] = useState('');
+  const [mensaje, setMensaje] = useState('');
+  const [buscando, setBuscando] = useState(false);
 
-    const [DetallesArticulos, setDetallesArticulos] = useState([])
-    const [articuloSeleccionado, setArticuloSeleccionado] = useState(null);
-    const [Articulos, setArticulos] = useState([]);
-    const [InputArticulo, setInputArticulo] = useState('');
-  
-    /* --- INICIO TABLA ARTICULOS --- */
-    useEffect(() => {
-      const ObtenerArticulos = async () => {
-        try {
-          const response = await GetTABLAARTICULOS()
-          console.log("response: ", response);
-          setArticulos(response.Dato)
-        } catch (error) {
-          console.error("Error al obtener los Articulos", error);
-        }
-      }
-      ObtenerArticulos();
-    }, []);
-    /* --- FIN TABLA ARTICULOS --- */
-  
-    // Maneja el cambio en la selección del proyecto
-    const handleArticuloSelect = (newValue) => {
-        setArticuloSeleccionado(newValue ? newValue.articulo : InputArticulo);
-    };
-    
-    const handleInputChange = (event, newinputArticulo) => {
-        setInputArticulo(newinputArticulo);
-        setArticuloSeleccionado(newinputArticulo);
-    };
-  
-  
-    /* --- INICIO DETALLES X ARTICULO --- */
-    async function handleBotonBuscar() {
+  useEffect(() => {
+    const obtenerArticulos = async () => {
       try {
-        const response = await GetTABLADETALLES(articuloSeleccionado);
-        console.log("Detalles por Articulo: ",response.Dato);
-        setDetallesArticulos(response.Dato[0])
+        const response = await GetTABLAARTICULOS();
+        const raw = response?.Dato;
+        const lista = Array.isArray(raw?.[0]) && !raw[0]?.articulo
+          ? raw[0]
+          : (Array.isArray(raw) ? raw : []);
+        setArticulos(lista.filter((a) => a && a.articulo));
       } catch (error) {
-        console.error("error con: ", error);
+        console.error('Error al obtener los Articulos', error);
+        setMensaje('No se pudieron cargar los artículos. Revisá la conexión con el servidor.');
+        setArticulos([]);
       }
-  
     };
-    /* --- FIN DETALLES X ARTICULO --- */
+    obtenerArticulos();
+  }, []);
 
-    /* --- INICIO ESTILO ICONOS --- */
-    const IconStyle = {
-        fontSize: {
-            xs: 12, 
-            sm: 14, 
-            md: 18, 
-            lg: 20, 
-            xl: 16
-        },
-        paddingRight: 0.5,
-        paddingTop: 0.3
-    }
-    /* --- FIN ESTILO ICONOS --- */
-
-    const formatNumber = (num) => {
-        return parseFloat(num).toString();
-    };
-  
-    return (
-  
-      <Grid container width={'100%'} sx={{ boxSizing: 'content-box', }}>
-        <Grid item xs={12} md={12} lg={12}>
-          <Grid container width={'100%'} sx={{ display: 'flex', justifyContent: 'center', alignContent: 'center', alignItems: 'center' }} >
-            <Grid item xs={4} md={4} lg={4} mt={1} mb={1}>
-              <Typography fontSize={{ xs: 15, sm: 18, md: 18, lg: 18, xl: 18 }} fontWeight={'700'} fontFamily={'Poppins'} display={'flex'} justifyContent={'center'} alignContent={'center'} alignItems={'center'}>
-                Seleccione Articulo :
-              </Typography>
-            </Grid>
-            <Grid item xs={4} md={4} lg={4} mt={1} mb={1}>
-                <Autocomplete
-                    options={Articulos}
-                    getOptionLabel={(option) => option.articulo}
-                    id="selected-Articulo"
-                    disableCloseOnSelect
-                    onChange={(event, newValue) => handleArticuloSelect(newValue)}
-                    inputValue={InputArticulo}
-                    onInputChange={handleInputChange}
-                    renderInput={(params) => (
-                        <TextField
-                        {...params}
-                        variant="standard"
-                        onKeyUp={(event) => {
-                            if (event.key === "Enter") {
-                            handleBotonBuscar();
-                            }
-                        }}
-                        />
-                    )}
-                />
-            </Grid>
-            <Grid item xs={4} md={4} lg={4} mt={1} mb={1} sx={{ display: 'flex', justifyContent: 'center', alignContent: 'center', alignItems: 'center' }}>
-              <Button variant="contained" onClick={() => { handleBotonBuscar(); }}>
-                <SearchIcon />
-              </Button>
-            </Grid>
-          </Grid>
-        </Grid>
-            <Grid container  sx={{  display: 'flex', justifyContent: 'center', alignContent: 'center', alignItems: 'center', paddingTop: 2 }}>
-                <Grid item xs={12} sm={12} md={12} lg={12} xl={12}>
-                    <Card sx={{ maxWidth: '99%', margin: '0 auto', borderRadius: "10px", boxShadow: "1px 1px 2px 3px rgba(0, 0, 0, 0.4)" }}>
-                        <Grid container columns={12} sx={{ width: "100%" }}  >
-                            {/* TITULO */}
-                            <Grid item xs={12} sm={12} md={12} sx={{ display: "flex", justifyContent: "center", alignItems: "center", alignContent: "center", backgroundColor: '#115393', textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)' }}  >
-                                <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                                    <Typography fontSize={{ xs: 15, sm: 12, md: 19, lg: 29, xl: 19 }} pl={1} fontFamily={'Poppins'} fontWeight={'800'} color={'white'}>
-                                        {DetallesArticulos.articulo}
-                                    </Typography>
-                                </Box>
-                            </Grid>
-                            {/* DETALLES DEL ARTICULO */}
-                            <Grid item xs={4} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* Urdimbre */}
-                                    <Grid item xs={5} sm={5} md={5} pl={1} sx={{ display: "flex", justifyContent: "flex-start", alignItems: "center", alignContent: "center", marginTop: 2 }}>
-                                        <WavesIcon  sx={IconStyle}/>
-                                        <Typography fontSize={{ xs: 7.5, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Urdimbre: </Typography>
-                                    </Grid>
-                                    <Grid item xs={7} sm={7} md={7} pl={1} sx={{ display: "flex", justifyContent:"flex-start",alignItems: "center", alignContent: "center", marginTop: 2, paddingLeft: 1 }}>
-                                        <Typography fontSize={{ xs: 7, sm: 11, md: 13, lg: 15, xl: 15 }} fontFamily={'Poppins'} fontWeight={'500'} >
-                                            {DetallesArticulos.urdimbre}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                            <Grid item xs={4} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* Hilos */}
-                                    <Grid item xs={5} sm={5} md={5} pl={1} sx={{ display: "flex", justifyContent: "flex-start", alignItems: "center", alignContent: "center", marginTop: 2 }}>
-                                        <GestureIcon sx={IconStyle}/>
-                                        <Typography fontSize={{ xs: 9, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Hilos: </Typography>
-                                    </Grid>
-                                    <Grid item xs={7} sm={7} md={7} pl={1} sx={{ display: "flex", justifyContent: "flex-start", alignItems: "center", alignContent: "center", marginTop: 2 }}>
-                                        <Typography fontSize={{ xs: 8, sm: 11, md: 13, lg: 15, xl: 15 }}  fontFamily={'Poppins'} fontWeight={'500'} >
-                                            {formatNumber(DetallesArticulos.hilos)}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>      
-                            <Grid item xs={4} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* Dibujo */}
-                                    <Grid item xs={5} sm={5} md={5} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <DesignServicesIcon sx={IconStyle}/>
-                                        <Typography fontSize={{ xs: 9, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Dibujo: </Typography>
-                                    </Grid>
-                                    <Grid item xs={7} sm={7} md={7} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <Typography fontSize={{ xs: 8, sm: 11, md: 13, lg: 15, xl: 15 }} fontFamily={'Poppins'} fontWeight={'500'} >
-                                            {DetallesArticulos.dibujo}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                            <Grid item xs={4} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* Peine */}
-                                    <Grid item xs={5} sm={5} md={5} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <StraightenIcon sx={IconStyle}/>
-                                        <Typography fontSize={{ xs: 9, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Peine: </Typography>
-                                    </Grid>
-                                    <Grid item xs={7} sm={7} md={7} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <Typography fontSize={{ xs: 8, sm: 11, md: 13, lg: 15, xl: 15 }} fontFamily={'Poppins'} fontWeight={'500'} >
-                                            {DetallesArticulos.peine}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                            <Grid item xs={4} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* linea */}
-                                    <Grid item xs={5} sm={5} md={5} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <AbcIcon sx={IconStyle}/>
-                                        <Typography fontSize={{ xs: 9, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Linea: </Typography>
-                                    </Grid>
-                                    <Grid item xs={7} sm={7} md={7} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <Typography fontSize={{ xs: 8, sm: 11, md: 13, lg: 15, xl: 15 }} fontFamily={'Poppins'} fontWeight={'500'} >
-                                            {DetallesArticulos.linea}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                            <Grid item xs={4} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* Ex */}
-                                    <Grid item xs={5} sm={5} md={5} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <CodeIcon sx={IconStyle}/>
-                                        <Typography fontSize={{ xs: 9, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Ex: </Typography>
-                                    </Grid>
-                                    <Grid item xs={7} sm={7} md={7} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <Typography fontSize={{ xs: 8, sm: 11, md: 13, lg: 15, xl: 15 }} fontFamily={'Poppins'} fontWeight={'500'} >
-                                            {DetallesArticulos.ex}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                            <Grid item xs={4} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* Nombre */}
-                                    <Grid item xs={5} sm={5} md={5} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <AbcIcon sx={IconStyle}/>
-                                        <Typography fontSize={{ xs: 9, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Nombre: </Typography>
-                                    </Grid>
-                                    <Grid item xs={7} sm={7} md={7} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <Typography fontSize={{ xs: 8, sm: 11, md: 13, lg: 15, xl: 15 }} fontFamily={'Poppins'} fontWeight={'500'} >
-                                            {DetallesArticulos.nombre}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                            <Grid item xs={4} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* Trama*/}
-                                    <Grid item xs={5} sm={5} md={5} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <WavesIcon sx={IconStyle}/>
-                                        <Typography fontSize={{ xs: 9, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Trama: </Typography>
-                                    </Grid>
-                                    <Grid item xs={7} sm={7} md={7} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <Typography fontSize={{ xs: 8, sm: 11, md: 13, lg: 15, xl: 15 }} fontFamily={'Poppins'} fontWeight={'500'} >
-                                            {DetallesArticulos.trama}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                            <Grid item xs={4} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* Pas x cm */}
-                                    <Grid item xs={5} sm={5} md={5} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <PinIcon sx={IconStyle}/>
-                                        <Typography fontSize={{ xs: 9, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Pas x Cm: </Typography>
-                                    </Grid>
-                                    <Grid item xs={7} sm={7} md={7} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <Typography fontSize={{ xs: 8, sm: 11, md: 13, lg: 15, xl: 15 }} fontFamily={'Poppins'} fontWeight={'500'} >
-                                            {formatNumber(DetallesArticulos.pas_x_cm)}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                            <Grid item xs={4} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* Gr/ml */}
-                                    <Grid item xs={5} sm={5} md={5} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <PinIcon sx={IconStyle}/>
-                                        <Typography fontSize={{ xs: 9, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Gr/ml: </Typography>
-                                    </Grid>
-                                    <Grid item xs={7} sm={7} md={7} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <Typography fontSize={{ xs: 8, sm: 11, md: 13, lg: 15, xl: 15 }} fontFamily={'Poppins'} fontWeight={'500'} >
-                                            {formatNumber(DetallesArticulos.gr_ml)}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                            <Grid item xs={4} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* Gr/m2 */}
-                                    <Grid item xs={5} sm={5} md={5} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <PinIcon sx={IconStyle}/>
-                                        <Typography fontSize={{ xs: 9, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Gr/m2: </Typography>
-                                    </Grid>
-                                    <Grid item xs={7} sm={7} md={7} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <Typography fontSize={{ xs: 8, sm: 11, md: 13, lg: 15, xl: 15 }} fontFamily={'Poppins'} fontWeight={'500'} >
-                                            {formatNumber(DetallesArticulos.gr_m2)}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                            <Grid item xs={4} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* Ancho Peine*/}
-                                    <Grid item xs={5} sm={5} md={5} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <PinIcon sx={IconStyle}/>
-                                        <Typography fontSize={{ xs: 9, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Ancho Peine: </Typography>
-                                    </Grid>
-                                    <Grid item xs={7} sm={7} md={7} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <Typography fontSize={{ xs: 8, sm: 11, md: 13, lg: 15, xl: 15 }} fontFamily={'Poppins'} fontWeight={'500'} >
-                                            {formatNumber(DetallesArticulos.ancho_peine)} cm
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                            <Grid item xs={4} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* Ancho Descanso */}
-                                    <Grid item xs={5} sm={5} md={5} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <PinIcon sx={IconStyle} />
-                                        <Typography fontSize={{ xs: 9, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Ancho Descanso: </Typography>
-                                    </Grid>
-                                    <Grid item xs={7} sm={7} md={7} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <Typography fontSize={{ xs: 8, sm: 11, md: 13, lg: 15, xl: 15 }} fontFamily={'Poppins'} fontWeight={'500'} >
-                                            {formatNumber(DetallesArticulos.ancho_descanso)} cm
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                            <Grid item xs={4} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* Hilo x Orillo */}
-                                    <Grid item xs={5} sm={5} md={5} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <LinearScaleIcon sx={IconStyle}/>
-                                        <Typography fontSize={{ xs: 9, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Hilo x Orillo: </Typography>
-                                    </Grid>
-                                    <Grid item xs={7} sm={7} md={7} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <Typography fontSize={{ xs: 8, sm: 11, md: 13, lg: 15, xl: 15 }} fontFamily={'Poppins'} fontWeight={'500'} >
-                                            {DetallesArticulos.hilo_x_orillo}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                            <Grid item xs={4} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* Articulo FV */}
-                                    <Grid item xs={12} sm={12} md={12} pl={0.5} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <NumbersIcon sx={IconStyle}/>
-                                        <Typography fontSize={{ xs: 9, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Articulo FV: </Typography>
-                                        <Typography fontSize={{ xs: 8, sm: 11, md: 13, lg: 15, xl: 15 }} fontFamily={'Poppins'} paddingLeft={"2px"}>
-                                            {DetallesArticulos.articulo_fv}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                            <Grid item xs={12} sm={3} md={3} mb={1} >
-                                <Grid container >
-                                    {/* Observacion */}
-                                    <Grid item xs={12} sm={12} md={12} pl={1} sx={{ display: "flex", justifyContent: "flex-start", marginTop: 2 }}>
-                                        <DescriptionIcon sx={IconStyle}/>
-                                        <Typography fontSize={{ xs: 9, sm: 12, md: 14, lg: 16, xl: 15 }} fontWeight={'650'} fontFamily={'Poppins'}> Observaciones: </Typography>
-                                        <Typography fontSize={{ xs: 8, sm: 11, md: 13, lg: 15, xl: 15 }} fontFamily={'Poppins'} paddingLeft={"2px"}>
-                                            {DetallesArticulos.observaciones}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                        </Grid>
-                    </Card>
-                </Grid>
-            </Grid>
-      </Grid>
-    );
+  const formatNumber = (num) => {
+    if (num === null || num === undefined || num === '') return '';
+    const n = parseFloat(num);
+    return Number.isNaN(n) ? String(num) : String(n);
   };
-  export default DetallesArticulos;
+
+  const handleBotonBuscar = async () => {
+    const codigo = (articuloSeleccionado || inputArticulo || '').trim();
+    if (!codigo) {
+      setMensaje('Seleccioná un artículo para buscar.');
+      return;
+    }
+
+    setBuscando(true);
+    setMensaje('');
+    try {
+      const response = await GetTABLADETALLES(codigo);
+      const raw = response?.Dato;
+      const fila = Array.isArray(raw?.[0]) ? raw[0][0] : raw?.[0];
+      if (fila && fila.articulo) {
+        setDetalle(fila);
+      } else {
+        setDetalle(null);
+        setMensaje(`No se encontraron detalles para ${codigo}.`);
+      }
+    } catch (error) {
+      console.error('error con: ', error);
+      setDetalle(null);
+      setMensaje('Error al buscar el artículo.');
+    } finally {
+      setBuscando(false);
+    }
+  };
+
+  const opciones = useMemo(
+    () => articulos.slice().sort((a, b) => String(a.articulo).localeCompare(String(b.articulo))),
+    [articulos]
+  );
+
+  return (
+    <Box sx={{ width: '100%', maxWidth: 920, mx: 'auto', px: { xs: 0.5, md: 1 }, pb: 3 }}>
+      <Typography sx={{ ...typography.cardTitle, mb: 0.5 }}>
+        Detalles del artículo
+      </Typography>
+      <Typography sx={{ ...typography.muted, fontSize: '0.85rem', mb: 1.5, fontWeight: 500 }}>
+        Buscá un artículo para ver su ficha técnica
+      </Typography>
+
+      <Box sx={{ ...filterBarSx, mb: 2 }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.25}
+          alignItems={{ xs: 'stretch', sm: 'center' }}
+        >
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Autocomplete
+              options={opciones}
+              getOptionLabel={(option) =>
+                typeof option === 'string' ? option : (option?.articulo ?? '')
+              }
+              isOptionEqualToValue={(option, value) => option?.articulo === value?.articulo}
+              value={opciones.find((a) => a.articulo === articuloSeleccionado) || null}
+              onChange={(_event, newValue) => {
+                setArticuloSeleccionado(newValue ? newValue.articulo : null);
+              }}
+              inputValue={inputArticulo}
+              onInputChange={(_event, newInput) => {
+                setInputArticulo(newInput);
+                if (!newInput) setArticuloSeleccionado(null);
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  size="small"
+                  label="Artículo"
+                  placeholder="Escribí o seleccioná..."
+                  onKeyUp={(event) => {
+                    if (event.key === 'Enter') handleBotonBuscar();
+                  }}
+                  sx={{
+                    fontFamily: typography.fontFamily,
+                    '& .MuiOutlinedInput-root': { borderRadius: '10px', fontFamily: 'Poppins' },
+                  }}
+                />
+              )}
+            />
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<SearchIcon />}
+            onClick={handleBotonBuscar}
+            disabled={buscando}
+            sx={{ ...primaryBtnSx, px: 2.5, flexShrink: 0 }}
+          >
+            Buscar
+          </Button>
+        </Stack>
+        {mensaje ? (
+          <Typography sx={{ mt: 1.25, fontFamily: 'Poppins', fontSize: '0.85rem', color: '#b45309' }}>
+            {mensaje}
+          </Typography>
+        ) : null}
+        {!mensaje && opciones.length > 0 ? (
+          <Typography sx={{ mt: 1, fontFamily: 'Poppins', fontSize: '0.75rem', color: colors.textMuted }}>
+            {opciones.length} artículos disponibles
+          </Typography>
+        ) : null}
+      </Box>
+
+      {detalle ? (
+        <Box sx={cardSx}>
+          <Box
+            sx={{
+              background: 'linear-gradient(180deg, #1A4862 0%, #163f55 100%)',
+              px: 2.5,
+              py: 1.75,
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: typography.fontFamily,
+                fontWeight: 700,
+                color: '#fff',
+                fontSize: { xs: '1.15rem', md: '1.35rem' },
+                letterSpacing: '0.04em',
+              }}
+            >
+              {detalle.articulo}
+            </Typography>
+            <Typography
+              sx={{
+                fontFamily: typography.fontFamily,
+                color: 'rgba(255,255,255,0.85)',
+                fontSize: '0.9rem',
+                mt: 0.35,
+                overflowWrap: 'anywhere',
+              }}
+            >
+              {detalle.nombre || 'Sin nombre'}
+            </Typography>
+          </Box>
+
+          <Stack spacing={1.75} sx={{ p: { xs: 1.5, md: 2.25 } }}>
+            <SectionBlock title="Identificación">
+              <FieldRow label="Artículo" value={detalle.articulo} />
+              <FieldRow label="Nombre" value={detalle.nombre} />
+              <FieldRow label="Línea" value={detalle.linea} />
+              <FieldRow label="Ex" value={detalle.ex} />
+              <FieldRow label="Artículo FV" value={detalle.articulo_fv} />
+            </SectionBlock>
+
+            <SectionBlock title="Tejido">
+              <FieldRow label="Urdimbre" value={detalle.urdimbre} />
+              <FieldRow label="Trama" value={detalle.trama} />
+              <FieldRow label="Hilos" value={formatNumber(detalle.hilos)} />
+              <FieldRow label="Dibujo" value={detalle.dibujo} />
+              <FieldRow label="Peine" value={detalle.peine} />
+              <FieldRow label="Pas x cm" value={formatNumber(detalle.pas_x_cm)} />
+              <FieldRow label="Hilo x orillo" value={detalle.hilo_x_orillo} />
+            </SectionBlock>
+
+            <SectionBlock title="Dimensiones y peso">
+              <FieldRow label="Gr/ml" value={formatNumber(detalle.gr_ml)} />
+              <FieldRow label="Gr/m²" value={formatNumber(detalle.gr_m2)} />
+              <FieldRow
+                label="Ancho peine"
+                value={detalle.ancho_peine != null && detalle.ancho_peine !== '' ? `${formatNumber(detalle.ancho_peine)} cm` : ''}
+              />
+              <FieldRow
+                label="Ancho descanso"
+                value={detalle.ancho_descanso != null && detalle.ancho_descanso !== '' ? `${formatNumber(detalle.ancho_descanso)} cm` : ''}
+              />
+            </SectionBlock>
+
+            <SectionBlock title="Observaciones">
+              <FieldRow label="Observaciones" value={detalle.observaciones || 'Sin observaciones'} />
+            </SectionBlock>
+          </Stack>
+        </Box>
+      ) : (
+        <Box
+          sx={{
+            ...cardSx,
+            p: 4,
+            textAlign: 'center',
+            color: colors.textMuted,
+            fontFamily: typography.fontFamily,
+          }}
+        >
+          Seleccioná un artículo y tocá Buscar para ver la ficha.
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+export default DetallesArticulos;

@@ -1,5 +1,6 @@
 import { productividadSubRoutes } from "./Productividad/routesFVProductividad";
 import { terminacionSubRoutes } from "./Terminacion/routesTerminacion";
+import { laboratorioSubRoutes } from "./routesLaboratorio";
 
 const routes = [
   {
@@ -11,8 +12,7 @@ const routes = [
   {
     name: "LABORATORIO",
     key: "Laboratorio",
-    route: "/BuenosAires/FlorencioVarela/Laboratorio",
-    target: "_self",
+    children: laboratorioSubRoutes,
   },
   {
     name: "CALIDAD",

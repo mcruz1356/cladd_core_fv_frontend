@@ -1,34 +1,42 @@
 // AuthContext.js
 import React, { createContext, useState, useContext } from "react";
 
-// Crear el contexto de autenticación unificado
 const AuthContext = createContext();
 
+function readStoredAuth() {
+  try {
+    const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
+    const raw = localStorage.getItem("auth");
+    if (!isAuthenticated || !raw) {
+      return { isAuthenticated: false, auth: null };
+    }
+    const auth = JSON.parse(raw);
+    if (!auth || typeof auth !== "object") {
+      return { isAuthenticated: false, auth: null };
+    }
+    return { isAuthenticated: true, auth };
+  } catch {
+    return { isAuthenticated: false, auth: null };
+  }
+}
+
 export const AuthProvider = ({ children }) => {
-  // Estado para manejar si el usuario está autenticado
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const stored = readStoredAuth();
+  const [isAuthenticated, setIsAuthenticated] = useState(stored.isAuthenticated);
+  const [auth, setAuth] = useState(stored.auth);
 
-  // Estado para manejar la información de autenticación del usuario (incluidos los roles)
-  const [auth, setAuth] = useState(null);
-
-  // Función para iniciar sesión (aquí podrías también establecer `auth` con datos del usuario)
   const login = (userData) => {
     setIsAuthenticated(true);
-    setAuth(userData); // userData debería contener los roles y cualquier otra información relevante
-
-  // SE AGREGA LOCALsTORAGE PARA GUARDAR LA SESION EN PESTAÑAS NUEVAS.
-    localStorage.setItem('auth', JSON.stringify(userData));
-    localStorage.setItem('isAuthenticated', 'true');
+    setAuth(userData);
+    localStorage.setItem("auth", JSON.stringify(userData));
+    localStorage.setItem("isAuthenticated", "true");
   };
 
-  // Función para cerrar sesión
   const logout = () => {
     setIsAuthenticated(false);
-    setAuth(null); // Limpia la información de autenticación
-    
-  // SE AGREGA LOCALsTORAGE PARA GUARDAR LA SESION EN PESTAÑAS NUEVAS.
-    localStorage.removeItem('auth');
-    localStorage.removeItem('isAuthenticated');
+    setAuth(null);
+    localStorage.removeItem("auth");
+    localStorage.removeItem("isAuthenticated");
   };
 
   return (
@@ -38,7 +46,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Hook para usar el contexto de autenticación
 export const useAuth = () => {
   return useContext(AuthContext);
 };
