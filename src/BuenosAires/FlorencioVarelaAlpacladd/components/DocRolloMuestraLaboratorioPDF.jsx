@@ -242,6 +242,139 @@ const styles = StyleSheet.create({
     },
 });
 
+/** Calcula rutina consecutiva con el mismo formato YYMM#### del registro. */
+function rutinaConsecutiva(rutinaBase, index) {
+    const base = String(rutinaBase ?? '');
+    const prefix = base.slice(0, 4);
+    const num = parseInt(base.slice(4), 10) || 0;
+    return `${prefix}${(num + index).toString().padStart(4, '0')}`;
+}
+
+function EtiquetaMuestraPage({
+    rutinaActual,
+    metrosMuestra,
+    dia,
+    hora,
+    anotaciones,
+    metrosTotal,
+    Rollo,
+    motivo,
+    articuloTerminado,
+    anidarRutina,
+    subLote,
+    ordenTrabajo,
+    informeResultado,
+    tarima,
+    QrcodeImageUrl,
+}) {
+    return (
+        <Page size="A6" orientation="landscape" style={styles.page}>
+            <View style={styles.Cabecera}>
+                <View style={styles.header}>
+                    <Image style={styles.logo} src={AlpaLogo} />
+                    <View style={styles.sectionData}>
+                        <Text style={styles.title}>Florencio Varela</Text>
+                        <Text>REGISTRO INGRESOS LABORATORIO - CALIDAD  </Text>
+                        <Text>Fecha: {dia}   </Text>
+                        <Text>Hora: {hora}   </Text>
+                        <Text style={styles.rutina}>Rutina {rutinaActual} </Text>
+                        <Text style={styles.motivo}>{motivo} </Text>
+                    </View>
+                    <View style={styles.QR}>
+                        <Image src={QrcodeImageUrl} />
+                    </View>
+                </View>
+            </View>
+            <View style={styles.Cuerpo}>
+                <View style={styles.table}>
+                    <View style={styles.tableRow}>
+                        <View style={[styles.tableCol, styles.tableColHeader]}>
+                            <Text style={[styles.tableColHeaderText]}>Rollo</Text>
+                        </View>
+                        <View style={[styles.tableCol, styles.tableColHeader]}>
+                            <Text style={[styles.tableColHeaderText]}>Anidar Rutina</Text>
+                        </View>
+                        <View style={[styles.tableCol, styles.tableColHeader]}>
+                            <Text style={[styles.tableColHeaderText]}>Sublote </Text>
+                        </View>
+                        <View style={[styles.tableCol, styles.tableColHeader]}>
+                            <Text style={[styles.tableColHeaderText]}>Orden Trabajo</Text>
+                        </View>
+                        <View style={[styles.tableCol, styles.tableColHeader]}>
+                            <Text style={[styles.tableColHeaderText]}>Artículo</Text>
+                        </View>
+                        <View style={[styles.tableCol, styles.tableColHeader]}>
+                            <Text style={[styles.tableColHeaderText]}>Tarima</Text>
+                        </View>
+                    </View>
+                    <View style={styles.tableRow}>
+                        <View style={[styles.tableCol]}>
+                            <Text style={[styles.tableColText, styles.tmetros]}>{Rollo}</Text>
+                        </View>
+                        <View style={[styles.tableCol]}>
+                            <Text style={[styles.tableColText]}> {anidarRutina}</Text>
+                        </View>
+                        <View style={[styles.tableCol]}>
+                            <Text style={[styles.tableColText]}> {subLote}</Text>
+                        </View>
+                        <View style={[styles.tableCol]}>
+                            <Text style={[styles.tableColText]}> {ordenTrabajo} </Text>
+                        </View>
+                        <View style={[styles.tableCol]}>
+                            <Text style={[styles.tableColText, styles.tmetros]}>{articuloTerminado}</Text>
+                        </View>
+                        <View style={[styles.tableCol]}>
+                            <Text style={[styles.tableColText, styles.tmetros]}>{tarima}</Text>
+                        </View>
+                    </View>
+                </View>
+
+                <View style={styles.table}>
+                    <View style={styles.tableRow}>
+                        <View style={[styles.tableCol, styles.tableColHeader]}>
+                            <Text style={[styles.tableColHeaderText]}>Informar Resultado</Text>
+                        </View>
+                        <View style={[styles.tableCol, styles.tableColHeader]}>
+                            <Text style={[styles.tableColHeaderText]}>Metros Totales [m]</Text>
+                        </View>
+                        <View style={[styles.tableCol, styles.tableColHeader]}>
+                            <Text style={[styles.tableColHeaderText]}>Muestra [m]</Text>
+                        </View>
+                    </View>
+                    <View style={styles.tableRow}>
+                        <View style={[styles.tableCol]}>
+                            <Text style={[styles.tableColText]}>{informeResultado}</Text>
+                        </View>
+                        <View style={[styles.tableCol, styles.tableColHeader]}>
+                            <Text style={[styles.tableColHeaderText, styles.tmetros]}>{metrosTotal}</Text>
+                        </View>
+                        <View style={[styles.tableCol]}>
+                            <Text style={[styles.tableColText, styles.tmetros]}>{metrosMuestra}</Text>
+                        </View>
+                    </View>
+                </View>
+
+                <View style={styles.tableLarge}>
+                    <View style={styles.tableRowSmall}>
+                        <View style={[styles.tableCol]}>
+                            <Text style={[styles.tableColText]}>ANOTACIONES</Text>
+                        </View>
+                    </View>
+                    <View style={styles.tableRowSmall}>
+                        <View style={[styles.tableCol]}>
+                            <Text style={[styles.tableColText]}>{anotaciones}</Text>
+                        </View>
+                    </View>
+                </View>
+                <Image
+                    style={{ width: 150, height: 25, alignSelf: 'center', marginTop: -10 }}
+                    src={`http://192.168.40.95:4202/codigodebarratenido/${rutinaActual}`}
+                />
+            </View>
+        </Page>
+    );
+}
+
 function DocRolloMuestraLaboratorioPDF(props) {
     const { anotaciones, rutina, metrosTotal, Rollo, motivo, articuloTerminado, anidarRutina,
         subLote, ordenTrabajo, informeResultado, tarima, muestra, QrcodeImageUrl, reImpresion } = props;
@@ -249,235 +382,48 @@ function DocRolloMuestraLaboratorioPDF(props) {
     const date = new Date();
     const dia = date.toLocaleDateString();
     const hora = date.toLocaleTimeString();
+
+    const muestrasValidas = (Array.isArray(muestra) ? muestra : [])
+        .map((item) => (item == null ? '' : String(item).trim()))
+        .filter((item) => item !== '');
+
+    // Reimpresión: una sola etiqueta con la rutina indicada.
+    // Alta: una etiqueta completa (con código de barras) por cada muestra válida.
+    const paginas = reImpresion
+        ? [{ rutinaActual: rutina, metrosMuestra: muestrasValidas[0] ?? muestra?.[0] ?? '' }]
+        : muestrasValidas.map((metrosMuestra, index) => ({
+            rutinaActual: rutinaConsecutiva(rutina, index),
+            metrosMuestra,
+        }));
+
+    const pageProps = {
+        dia,
+        hora,
+        anotaciones,
+        metrosTotal,
+        Rollo,
+        motivo,
+        articuloTerminado,
+        anidarRutina,
+        subLote,
+        ordenTrabajo,
+        informeResultado,
+        tarima,
+        QrcodeImageUrl,
+    };
+
     return (
         <Document>
-            <Page size="A6" orientation="landscape" style={styles.page}>
-                {/* Cabecera */}
-                <View style={styles.Cabecera}>
-                    <View style={styles.header}>
-                        <Image style={styles.logo} src={AlpaLogo} />
-                        <View style={styles.sectionData}>
-                            <Text style={styles.title}>Florencio Varela</Text>
-                            <Text>REGISTRO INGRESOS LABORATORIO - CALIDAD  </Text>
-                            <Text>Fecha: {dia}   </Text>
-                            <Text>Hora: {hora}   </Text>
-                            <Text style={styles.rutina}>Rutina {rutina} </Text>
-
-                            <Text style={styles.motivo}>{motivo} </Text>
-                        </View>
-                        <View style={styles.QR}>
-                            <Image src={QrcodeImageUrl} />
-                        </View>
-                    </View>
-                </View>
-                <View style={styles.Cuerpo}>
-                    {/* 1º Tabla: Orden-Secuencia-Articulo-Metros Totales-Ancho */}
-                    <View style={styles.table}>
-                        <View style={styles.tableRow}>
-                            <View style={[styles.tableCol, styles.tableColHeader]}>
-                                <Text style={[styles.tableColHeaderText]}>Rollo</Text>
-                            </View>
-                            <View style={[styles.tableCol, styles.tableColHeader]}>
-                                <Text style={[styles.tableColHeaderText]}>Anidar Rutina</Text>
-                            </View>
-                            <View style={[styles.tableCol, styles.tableColHeader]}>
-                                <Text style={[styles.tableColHeaderText]}>Sublote </Text>
-                            </View>
-                            <View style={[styles.tableCol, styles.tableColHeader]}>
-                                <Text style={[styles.tableColHeaderText]}>Orden Trabajo</Text>
-                            </View>
-                            <View style={[styles.tableCol, styles.tableColHeader]}>
-                                <Text style={[styles.tableColHeaderText]}>Artículo</Text>
-                            </View>
-                            <View style={[styles.tableCol, styles.tableColHeader]}>
-                                <Text style={[styles.tableColHeaderText]}>Tarima</Text>
-                            </View>
-
-                        </View>
-                        <View style={styles.tableRow}>
-                            <View style={[styles.tableCol]}>
-                                <Text style={[styles.tableColText, styles.tmetros]}>{Rollo}</Text>
-                            </View>
-                            <View style={[styles.tableCol]}>
-                                <Text style={[styles.tableColText]}> {anidarRutina}</Text>
-                            </View>
-                            <View style={[styles.tableCol]}>
-                                <Text style={[styles.tableColText]}> {subLote}</Text>
-                            </View>
-                            <View style={[styles.tableCol]}>
-                                <Text style={[styles.tableColText]}> {ordenTrabajo} </Text>
-                            </View>
-                            <View style={[styles.tableCol]}>
-                                <Text style={[styles.tableColText, styles.tmetros]}>{articuloTerminado}</Text>
-                            </View>
-                            <View style={[styles.tableCol]}>
-                                <Text style={[styles.tableColText, styles.tmetros]}>{tarima}</Text>
-                            </View>
-
-                        </View>
-                    </View>
-
-                    {/* 2º Tabla: Telar-Trama-Urdimbre-ptos/100m²-  */}
-                    <View style={styles.table}>
-                        <View style={styles.tableRow}>
-                            <View style={[styles.tableCol, styles.tableColHeader]}>
-                                <Text style={[styles.tableColHeaderText]}>Informar Resultado</Text>
-                            </View>
-                            <View style={[styles.tableCol, styles.tableColHeader]}>
-                                <Text style={[styles.tableColHeaderText]}>Metros Totales [m]</Text>
-                            </View>
-                            <View style={[styles.tableCol, styles.tableColHeader]}>
-                                <Text style={[styles.tableColHeaderText]}>Muestra [m]</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.tableRow}>
-                            <View style={[styles.tableCol]}>
-                                <Text style={[styles.tableColText]}>{informeResultado}</Text>
-                            </View>
-                            <View style={[styles.tableCol, styles.tableColHeader]}>
-                                <Text style={[styles.tableColHeaderText, styles.tmetros]}>{metrosTotal}</Text>
-                            </View>
-                            <View style={[styles.tableCol]}>
-                                <Text style={[styles.tableColText, styles.tmetros]}>{muestra[0]}</Text>
-                            </View>
-                        </View>
-                    </View>
-
-                    {/* 3º Tabla: OBSERVACIONES */}
-                    <View style={styles.tableLarge}>
-                        <View style={styles.tableRowSmall}>
-                            <View style={[styles.tableCol]}>
-                                <Text style={[styles.tableColText]}>ANOTACIONES</Text>
-                            </View>
-                        </View>
-                        <View style={styles.tableRowSmall}>
-                            <View style={[styles.tableCol]}>
-                                <Text style={[styles.tableColText]}>{anotaciones}</Text>
-                            </View>
-                        </View>
-
-
-                    </View>
-                         <Image
-                                style={{ width: 150, height: 25, alignSelf: 'center', marginTop: -10 }}
-                                src={`http://192.168.40.95:4202/codigodebarratenido/${rutina}`}
-                            />
-                </View>
-            </Page>
-
-            {!reImpresion && muestra.map((item, index) => (
-                <Page size="A6" orientation="landscape" style={styles.page}>
-                    {/* Cabecera */}
-                    <View style={styles.Cabecera}>
-                        <View style={styles.header}>
-                            <Image style={styles.logo} src={AlpaLogo} />
-                            <View style={styles.sectionData}>
-                                <Text style={styles.title}>Florencio Varela</Text>
-                                <Text>REGISTRO INGRESOS LABORATORIO - CALIDAD  </Text>
-                                <Text>Fecha: {dia}   </Text>
-                                <Text>Hora: {hora}   </Text>
-                                <Text style={styles.rutina}>Rutina {parseInt(rutina) + index} </Text>
-                                <Text style={styles.motivo}>{motivo} </Text>
-                            </View>
-                            <View style={styles.QR}>
-                                <Image src={QrcodeImageUrl} />
-                            </View>
-                        </View>
-                    </View>
-                    <View style={styles.Cuerpo}>
-                        {/* 1º Tabla: Orden-Secuencia-Articulo-Metros Totales-Ancho */}
-                        <View style={styles.table}>
-                            <View style={styles.tableRow}>
-                                <View style={[styles.tableCol, styles.tableColHeader]}>
-                                    <Text style={[styles.tableColHeaderText]}>Rollo</Text>
-                                </View>
-                                <View style={[styles.tableCol, styles.tableColHeader]}>
-                                    <Text style={[styles.tableColHeaderText]}>Anidar Rutina</Text>
-                                </View>
-                                <View style={[styles.tableCol, styles.tableColHeader]}>
-                                    <Text style={[styles.tableColHeaderText]}>Sublote </Text>
-                                </View>
-                                <View style={[styles.tableCol, styles.tableColHeader]}>
-                                    <Text style={[styles.tableColHeaderText]}>Orden Trabajo</Text>
-                                </View>
-                                <View style={[styles.tableCol, styles.tableColHeader]}>
-                                    <Text style={[styles.tableColHeaderText]}>Artículo</Text>
-                                </View>
-                                <View style={[styles.tableCol, styles.tableColHeader]}>
-                                    <Text style={[styles.tableColHeaderText]}>Tarima</Text>
-                                </View>
-
-                            </View>
-                            <View style={styles.tableRow}>
-                                <View style={[styles.tableCol]}>
-                                    <Text style={[styles.tableColText, styles.tmetros]}>{Rollo}</Text>
-                                </View>
-                                <View style={[styles.tableCol]}>
-                                    <Text style={[styles.tableColText]}> {anidarRutina}</Text>
-                                </View>
-                                <View style={[styles.tableCol]}>
-                                    <Text style={[styles.tableColText]}> {subLote}</Text>
-                                </View>
-                                <View style={[styles.tableCol]}>
-                                    <Text style={[styles.tableColText]}> {ordenTrabajo} </Text>
-                                </View>
-                                <View style={[styles.tableCol]}>
-                                    <Text style={[styles.tableColText, styles.tmetros]}>{articuloTerminado}</Text>
-                                </View>
-                                <View style={[styles.tableCol]}>
-                                    <Text style={[styles.tableColText, styles.tmetros]}>{tarima}</Text>
-                                </View>
-
-                            </View>
-                        </View>
-
-                        {/* 2º Tabla: Telar-Trama-Urdimbre-ptos/100m²-  */}
-                        <View style={styles.table}>
-                            <View style={styles.tableRow}>
-                                <View style={[styles.tableCol, styles.tableColHeader]}>
-                                    <Text style={[styles.tableColHeaderText]}>Informar Resultado</Text>
-                                </View>
-                                <View style={[styles.tableCol, styles.tableColHeader]}>
-                                    <Text style={[styles.tableColHeaderText]}>Metros Totales [m]</Text>
-                                </View>
-                                <View style={[styles.tableCol, styles.tableColHeader]}>
-                                    <Text style={[styles.tableColHeaderText]}>Muestra [m]</Text>
-                                </View>
-                            </View>
-
-                            <View style={styles.tableRow}>
-                                <View style={[styles.tableCol]}>
-                                    <Text style={[styles.tableColText]}>{informeResultado}</Text>
-                                </View>
-                                <View style={[styles.tableCol, styles.tableColHeader]}>
-                                    <Text style={[styles.tableColHeaderText, styles.tmetros]}>{metrosTotal}</Text>
-                                </View>
-                                <View style={[styles.tableCol]}>
-                                    <Text style={[styles.tableColText, styles.tmetros]}>{item}</Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        {/* 3º Tabla: OBSERVACIONES */}
-                        <View style={styles.tableLarge}>
-                            <View style={styles.tableRowSmall}>
-                                <View style={[styles.tableCol]}>
-                                    <Text style={[styles.tableColText]}>ANOTACIONES</Text>
-                                </View>
-                            </View>
-                            <View style={styles.tableRowSmall}>
-                                <View style={[styles.tableCol]}>
-                                    <Text style={[styles.tableColText]}>{anotaciones}</Text>
-                                </View>
-                            </View>
-                        </View>
-                    </View>
-                </Page>
+            {paginas.map(({ rutinaActual, metrosMuestra }) => (
+                <EtiquetaMuestraPage
+                    key={rutinaActual}
+                    rutinaActual={rutinaActual}
+                    metrosMuestra={metrosMuestra}
+                    {...pageProps}
+                />
             ))}
         </Document>
-
-    )
+    );
 }
 
 export default DocRolloMuestraLaboratorioPDF

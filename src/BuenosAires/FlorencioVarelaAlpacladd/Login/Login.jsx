@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import {
   Box,
@@ -10,7 +10,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import MuiAlert from "@mui/material/Alert";
-import { useNavigate, useLocation, Navigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../../AuthContext";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import LoginIcon from "@mui/icons-material/Login";
@@ -46,6 +46,8 @@ const fieldSx = {
 
 /**
  * Login de acceso FV — diseño Acceso (card blanca sobre navy).
+ * Siempre pide credenciales al entrar (PC compartida por turnos):
+ * limpia la sesión anterior y al loguear reemplaza el usuario en localStorage.
  * @param {string} [subtitle] Texto bajo el título Acceso
  * @param {string} [dashboardPath] Destino del botón Volver
  */
@@ -53,7 +55,7 @@ const LoginLabFV = ({
   subtitle = "Iniciar sesión para acceder al módulo",
   dashboardPath = "/BuenosAires/FlorencioVarela/AlpacladdHome",
 }) => {
-  const { login, isAuthenticated, auth } = useAuth();
+  const { login, logout } = useAuth();
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -62,10 +64,12 @@ const LoginLabFV = ({
   const from = location.state?.from?.pathname || "/BuenosAires/FlorencioVarela/Laboratorio/App";
   const [body, setBody] = useState({ legajo: "", password: "" });
 
-  // Si ya hay sesión en localStorage / contexto, no mostrar login
-  if (isAuthenticated && auth) {
-    return <Navigate to={from} replace />;
-  }
+  // Al entrar al login de laboratorio: cerrar sesión previa (otro turno / otro usuario)
+  useEffect(() => {
+    logout();
+    // Solo al montar: cada ingreso a Laboratorio pide credenciales de nuevo
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCloseSnackbar = () => setOpenSnackbar(false);
 
