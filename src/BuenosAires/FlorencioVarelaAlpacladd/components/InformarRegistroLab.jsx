@@ -1,10 +1,22 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Box, Grid, TextField, Button, Snackbar, Alert, Typography, Autocomplete } from '@mui/material';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  Box,
+  Grid,
+  TextField,
+  Button,
+  Snackbar,
+  Alert,
+  Typography,
+  CircularProgress,
+  InputAdornment,
+} from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import HourglassTopIcon from '@mui/icons-material/HourglassTop';
 import CardAlpa from '../../../components/Plantilla/CardAlpa';
 import HeaderYFooter from '../../../components/Plantilla/HeaderYFooter';
-import { putRegistroLaboratorio, getOperarios } from '../API/APIFunctions';
+import { putRegistroLaboratorio } from '../API/APIFunctions';
 import { colors, typography } from '../../../styles/alpacladdFvDesignTokens';
 
 const primaryBtnSx = {
@@ -29,11 +41,10 @@ const fieldSx = {
 
 const InformarRegistroLab = ({ withChrome = false }) => {
   const [codigo, setCodigo] = useState('');
-  const [operario, setOperario] = useState('');
-  const [operarios, setOperarios] = useState([]);
-  const [loadingOperarios, setLoadingOperarios] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [rutinaEnProceso, setRutinaEnProceso] = useState('');
   const inputRef = useRef(null);
+  const processingRef = useRef(false);
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -45,60 +56,28 @@ const InformarRegistroLab = ({ withChrome = false }) => {
     setSnackbarOpen(true);
   };
 
-  const handleSnackbarClose = () => setSnackbarOpen(false);
+  const handleSnackbarClose = (_, reason) => {
+    if (reason === 'clickaway') return;
+    setSnackbarOpen(false);
+  };
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    const fetchOperarios = async () => {
-      setLoadingOperarios(true);
-      try {
-        const respuesta = await getOperarios();
-        const lista = Array.isArray(respuesta?.data) ? respuesta.data : [];
-        setOperarios(lista);
-        if (lista.length === 0) {
-          showSnackbar('No se encontraron operarios (role Operador).', 'warning');
-        }
-      } catch (error) {
-        console.error('Error al obtener operarios:', error);
-        setOperarios([]);
-        showSnackbar('Error al cargar operarios.', 'error');
-      } finally {
-        setLoadingOperarios(false);
-      }
-    };
-
-    fetchOperarios();
-  }, []);
-
-  const nombresOperarios = useMemo(
-    () => operarios.map((op) => op.usuario).filter(Boolean),
-    [operarios]
-  );
-
-  const handleSearch = async () => {
-    if (!codigo.trim()) {
-      showSnackbar('Ingrese un codigo de muestra.', 'warning');
+  const registrarEntrada = async (codigoEscaneado) => {
+    const rutina = (codigoEscaneado || '').trim();
+    if (!rutina) {
+      showSnackbar('Escaneá o ingresá un código de muestra / rutina.', 'warning');
       return;
     }
 
-    const operarioTrim = (operario || '').trim();
-    if (!operarioTrim) {
-      showSnackbar('Ingresá o seleccioná el operario responsable.', 'warning');
-      return;
-    }
-
-    const operarioValido = nombresOperarios.find(
-      (nombre) => nombre.toLowerCase() === operarioTrim.toLowerCase()
-    );
-    if (!operarioValido) {
-      showSnackbar('El operario debe existir en la lista de Operadores.', 'warning');
-      return;
-    }
-
+    if (processingRef.current) return;
+    processingRef.current = true;
     setLoading(true);
+    setRutinaEnProceso(rutina);
+    setSnackbarOpen(false);
+
     try {
       const ahora = new Date();
       const fechaActual = new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000)
@@ -107,38 +86,51 @@ const InformarRegistroLab = ({ withChrome = false }) => {
         .replace('T', ' ');
 
       const body = {
-        rutina: codigo.trim(),
+        rutina,
         fecha_ingreso_laboratorio: fechaActual,
-        usuario: operarioValido,
+        usuario: '',
       };
 
       const respuesta = await putRegistroLaboratorio(body);
 
       if (respuesta?.success) {
+        setCodigo('');
         showSnackbar(
-          `Rutina ${codigo.trim()} registrada (Entrada) — ${operarioValido} — ${fechaActual}`,
+          `Estado actualizado: rutina ${rutina} → Entrada`,
           'success'
         );
-        setCodigo('');
       } else {
-        showSnackbar(`No se encontró la rutina ${codigo.trim()}.`, 'warning');
+        showSnackbar(
+          `No se pudo registrar: no se encontró la rutina ${rutina}.`,
+          'warning'
+        );
       }
     } catch (error) {
       console.error('Error al registrar rutina:', error);
-      showSnackbar('Error al conectar con el servidor.', 'error');
+      const msg =
+        error?.response?.data?.message ||
+        'Error al conectar con el servidor. Intentá de nuevo.';
+      showSnackbar(msg, 'error');
     } finally {
       setLoading(false);
-      inputRef.current?.focus();
+      setRutinaEnProceso('');
+      processingRef.current = false;
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
 
   const handleDelete = () => {
+    if (loading) return;
     setCodigo('');
     inputRef.current?.focus();
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') handleSearch();
+  /** El lector de códigos envía Enter al terminar el escaneo → registra y cambia estado. */
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!loading) registrarEntrada(codigo);
+    }
   };
 
   const content = (
@@ -156,12 +148,28 @@ const InformarRegistroLab = ({ withChrome = false }) => {
     >
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={4000}
+        autoHideDuration={snackbarSeverity === 'success' ? 5000 : 4500}
         onClose={handleSnackbarClose}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        sx={{ zIndex: 2000, position: 'absolute', top: 0 }}
+        sx={{ zIndex: 2000 }}
       >
-        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+        <Alert
+          onClose={handleSnackbarClose}
+          severity={snackbarSeverity}
+          variant="filled"
+          icon={
+            snackbarSeverity === 'success' ? (
+              <CheckCircleOutlineIcon fontSize="inherit" />
+            ) : undefined
+          }
+          sx={{
+            width: '100%',
+            maxWidth: 480,
+            fontFamily: typography.fontFamily,
+            fontWeight: 600,
+            alignItems: 'center',
+          }}
+        >
           {snackbarMessage}
         </Alert>
       </Snackbar>
@@ -169,19 +177,14 @@ const InformarRegistroLab = ({ withChrome = false }) => {
       <CardAlpa sx={{ width: '100%', mt: 0 }}>
         <Grid container spacing={2} padding={2.5}>
           <Grid item xs={12}>
-            <Typography
-              sx={{
-                ...typography.cardTitle,
-                mb: 0.5,
-              }}
-            >
+            <Typography sx={{ ...typography.cardTitle, mb: 0.5 }}>
               Ingreso de muestra a laboratorio
             </Typography>
             <Typography
               variant="body2"
               sx={{ fontFamily: typography.fontFamily, color: colors.textMuted, mb: 1.5 }}
             >
-              Escaneá o ingresá el código de rutina, escribí o elegí el operario y registrá la Entrada.
+              Escaneá el código de rutina o muestra. Al escanear se registra la entrada y el estado pasa a Entrada automáticamente.
             </Typography>
           </Grid>
 
@@ -191,35 +194,52 @@ const InformarRegistroLab = ({ withChrome = false }) => {
               variant="outlined"
               value={codigo}
               onChange={(e) => setCodigo(e.target.value)}
-              onKeyDown={handleKeyPress}
+              onKeyDown={handleKeyDown}
               inputRef={inputRef}
               fullWidth
               autoFocus
+              disabled={loading}
+              placeholder="Esperando escaneo…"
               sx={fieldSx}
+              InputProps={{
+                endAdornment: loading ? (
+                  <InputAdornment position="end">
+                    <CircularProgress size={22} sx={{ color: colors.brand }} />
+                  </InputAdornment>
+                ) : null,
+              }}
             />
           </Grid>
 
-          <Grid item xs={12}>
-            <Autocomplete
-              freeSolo
-              options={nombresOperarios}
-              value={operario}
-              loading={loadingOperarios}
-              onChange={(_, newValue) => setOperario(newValue || '')}
-              onInputChange={(_, newInputValue) => setOperario(newInputValue || '')}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Operario responsable"
-                  variant="outlined"
-                  required
-                  helperText={loadingOperarios ? 'Cargando operarios…' : ''}
-                  onKeyDown={handleKeyPress}
-                  sx={fieldSx}
-                />
-              )}
-            />
-          </Grid>
+          {loading && (
+            <Grid item xs={12}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.25,
+                  px: 1.5,
+                  py: 1.25,
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(26, 72, 98, 0.06)',
+                  border: '1px solid rgba(26, 72, 98, 0.12)',
+                }}
+              >
+                <CircularProgress size={20} sx={{ color: colors.brand }} />
+                <HourglassTopIcon sx={{ color: colors.brand, fontSize: 20 }} />
+                <Typography
+                  sx={{
+                    fontFamily: typography.fontFamily,
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    color: colors.brand,
+                  }}
+                >
+                  Registrando rutina {rutinaEnProceso}… cambiando estado a Entrada
+                </Typography>
+              </Box>
+            </Grid>
+          )}
 
           <Grid item xs={12}>
             <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
@@ -228,6 +248,7 @@ const InformarRegistroLab = ({ withChrome = false }) => {
                 color="error"
                 startIcon={<DeleteIcon />}
                 onClick={handleDelete}
+                disabled={loading}
                 sx={{
                   flex: 1,
                   fontFamily: 'Poppins',
@@ -242,7 +263,8 @@ const InformarRegistroLab = ({ withChrome = false }) => {
               <LoadingButton
                 loading={loading}
                 variant="contained"
-                onClick={handleSearch}
+                onClick={() => registrarEntrada(codigo)}
+                disabled={loading}
                 sx={{ flex: 1, ...primaryBtnSx }}
               >
                 Registrar entrada

@@ -130,12 +130,15 @@ function RegistrarMuestra() {
     ultimoRolloConsultado.current = '';
   }
   const handleIncremento = () => {
-    setNumCampos(numCampos + 1);
+    setNumCampos((prev) => prev + 1);
+    setMuestra((prev) => [...prev, '']);
   };
   const handleDecremento = () => {
-    if (numCampos > 0) {
-      setNumCampos(numCampos - 1);
-    }
+    setNumCampos((prev) => {
+      if (prev <= 1) return prev;
+      return prev - 1;
+    });
+    setMuestra((prev) => (prev.length <= 1 ? prev : prev.slice(0, -1)));
   };
 
   async function getTarimasOcupadas() {
@@ -248,9 +251,12 @@ function RegistrarMuestra() {
     }
   };
   const handleFormChangeText = (event, index) => {
+    const value = event.target.value;
     setMuestra((prevMuestra) => {
-      prevMuestra[index] = event.target.value;
-      return [...prevMuestra];
+      const next = [...prevMuestra];
+      while (next.length <= index) next.push('');
+      next[index] = value;
+      return next;
     });
   };
   const handleKeyDown = (e) => {
@@ -339,14 +345,18 @@ function RegistrarMuestra() {
     }
   }
   // FIN - CALCULAR CAMPOS Y PASAR DE MANERA AUTOMATICA
-  async function handleImprimir(rutina, qr) {
-    // Crear una nueva ventana
+  async function handleImprimir(rutina, qr, muestrasParaImprimir) {
     const newWindow = window.open('', '_blank');
+    if (!newWindow) {
+      setMensaje('No se pudo abrir la ventana de impresión. Verificá el bloqueador de ventanas emergentes.');
+      setTipo('warning');
+      setIsOpen(true);
+      return;
+    }
     const rootElement = newWindow.document.createElement('div');
     newWindow.document.body.appendChild(rootElement);
     const reactRoot = ReactDOM.createRoot(rootElement);
 
-    // Renderizar el componente <Test/> en la nueva ventana
     reactRoot.render(
       <Test
         rutina={rutina}
@@ -360,7 +370,7 @@ function RegistrarMuestra() {
         tarima={tarima}
         motivo={value}
         metrosTotal={metrosTotal}
-        muestra={muestra}
+        muestra={[...muestrasParaImprimir]}
         QrcodeImageUrl={qr}
       />
     );
@@ -443,15 +453,34 @@ function RegistrarMuestra() {
   };
 async function registrarMuestras() {
   try {
+    const muestrasValidas = muestra
+      .map((item) => (item == null ? '' : String(item).trim()))
+      .filter((item) => item !== '');
+
+    if (muestrasValidas.length === 0) {
+      setMensaje('Ingrese al menos una muestra');
+      setTipo('error');
+      setIsOpen(true);
+      setLoading(false);
+      return;
+    }
+
     let nuevaRutinaBase = await generarNuevaRutina();
+    if (!nuevaRutinaBase) {
+      setLoading(false);
+      return;
+    }
+
     let codigoRollo = encodeURIComponent(rollo.slice(-5));
     const qr = 'http://192.168.40.95:4006/codigoqrrevisado/' + codigoRollo;
+    let primeraRutina = null;
 
-    for (let x = 0; x < muestra.length; x++) {
-
+    for (let x = 0; x < muestrasValidas.length; x++) {
       let rutinaConsecutiva =
-        nuevaRutinaBase.slice(0,4) +
-        (parseInt(nuevaRutinaBase.slice(4)) + x).toString().padStart(4,"0");
+        nuevaRutinaBase.slice(0, 4) +
+        (parseInt(nuevaRutinaBase.slice(4), 10) + x).toString().padStart(4, '0');
+
+      if (x === 0) primeraRutina = rutinaConsecutiva;
 
       let letra = String.fromCharCode(65 + x);
 
@@ -467,7 +496,7 @@ async function registrarMuestras() {
         informe_resultado: informeResultado,
         metros_total: metrosTotal,
         rutina: rutinaConsecutiva,
-        muestra: muestra[x],
+        muestra: muestrasValidas[x],
         tarima: tarima,
         operario: auth?.usuario,
         letra: letra,
@@ -483,8 +512,10 @@ async function registrarMuestras() {
         setIsOpen(true);
         renovarTarimas ? setRenovarTarimas(false) : setRenovarTarimas(true);
       }
+    }
 
-      if (x === 0) handleImprimir(rutinaConsecutiva, qr);
+    if (primeraRutina) {
+      await handleImprimir(primeraRutina, qr, muestrasValidas);
     }
 
     refrescarTabla ? setRefrescarTabla(false) : setRefrescarTabla(true);
